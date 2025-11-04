@@ -85,8 +85,9 @@ KEYWORDS = {
     "DIFFRINT" : "Not Equal Operator",
     "SMOOSH" : "Concatenation Keyword",
     "MAEK" : "Typecast Keyword",
-    'A' : "Typecast Keyword",
+    "I HAS A" : "Variable Declaration",
     "IS NOW A" : "Typecast Keyword",
+    'A' : "Typecast Keyword",
     "VISIBLE" : "Output Keyword",
     "GIMMEH" : "Input Keyword",
     "O RLY?" : "Start of If-then Delimiter",
@@ -106,10 +107,19 @@ KEYWORDS = {
     "IM OUTTA YR" : "Loop Delimiter",
     'NOOB' : "Type Literal",
     "AN" : "Operator Delimiter",
-    "I HAS A" : "Variable Declaration",
     "GTFO": "Break Keyword",
     "MKAY": "Operation End"
 }
+
+# for multi-word keywords
+MULTIWORD_PREFIXES = [
+    'I', 'I HAS',                                            
+    'SUM', 'DIFF', 'PRODUKT', 'QUOSHUNT', 'MOD',         
+    'BIGGR', 'SMALLR', 'BOTH', 'EITHER', 'WON', 'ANY', 'ALL',
+    'IS', 'IS NOW',                                          
+    'O', 'YA', 'NO', 
+    'IM', 'IM IN', 'IM OUTTA'                                 
+]
 
 # Contains the array of tokens taken from our lexer
 class Token:
@@ -204,35 +214,60 @@ class Lexer:
             return Token(TK_FLOAT, float(num_str))
 
 
-    # TODO: MAKE it work for words that include spaces. currently in progress
+    # TODO: MAKE it work for words that include spaces. currently in progress ==> check changes
     # TODO: Allow it to detect YARN data types as "" are currently not included yet
     #  reads a line up until it does not read a letter or a digit
     def make_identifier(self):
         id_str = ''
         pos_start = self.pos.copy()
-        isIncomplete = False
-        incomplete = ['I', "SUM", "DIFF", "PRODUKT", "QUOSHUNT", "MOD",         
-                        "BIGGR", "SMALLR", "BOTH", "EITHER", "WON", "ANY", "ALL",
-                        "BOTH", "IS", "O", "YA", "NO", "IM"]
-
-        while (self.current_char != None and self.current_char in LETTERS_DIGITS + '_') or isIncomplete:
-            if self.current_char == None:
-                break
+        
+        # read the first word
+        while self.current_char != None and self.current_char in LETTERS_DIGITS + '_':
             id_str += self.current_char
-
- 
-            if id_str in KEYWORDS.keys() and isIncomplete:
-                self.advance()
-                break
-            if id_str in incomplete:
-                isIncomplete = True
-                id_str += " "   
-                self.advance()
-             
             self.advance()
-        tok_type = KEYWORDS[id_str] if id_str in KEYWORDS.keys() else "Vardent"
-        return Token(tok_type)
+        
+        # check if current str could be part of a multi-word keyword
+        while True:
+            temp_pos = self.pos.copy()      # copy of current position for backtracking (if needed)
+            temp_str = id_str               # copy of current traced str
 
+            # skip spaces
+            space_counter = 0
+            while self.current_char == ' ':
+                space_counter += 1
+                self.advance()
+
+            # if space_counter == 0, current str cannot be extended (not a multi-word)
+            if space_counter == 0:
+                break
+            
+            # else, try to read next word
+            next_word = ''
+            while self.current_char != None and self.current_char in LETTERS_DIGITS + '_?':
+                next_word += self.current_char
+                self.advance()
+            
+            # if cannot read next word, backtrack and stop
+            if not next_word:
+                self.pos = temp_pos
+                self.current_char = self.text[self.pos.idx] if self.pos.idx < len(self.text) else None
+                break
+
+            # check the extended version
+            temp_extended = temp_str + ' ' + next_word
+
+            # check if temp_extended is a valid keyword 
+            if temp_extended in KEYWORDS.keys() or temp_extended in MULTIWORD_PREFIXES:
+                id_str = temp_extended
+
+            else:
+                self.pos = temp_pos
+                self.current_char = self.text[self.pos.idx] if self.pos.idx < len(self.text) else None
+                break
+
+        tok_type = KEYWORDS.get(id_str, "varident")
+        return Token(tok_type, id_str if tok_type == "varident" else None)        
+        
 #################################
 # RUN THE LEXER!!!
 #################################
