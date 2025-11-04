@@ -112,7 +112,9 @@ KEYWORDS = {
     'NOOB' : "Type Literal",
     "AN" : "Operator Delimiter",
     "GTFO": "Break Keyword",
-    "MKAY": "Operation End"
+    "MKAY": "Operation End",
+    "WIN" : "Boolean Literal (True)",
+    "FAIL" : "Boolean Literal (False)"
 }
 
 # for multi-word keywords
@@ -132,7 +134,7 @@ class Token:
         self.value = value
     
     def __repr__(self):
-        if self.value: return f'{self.type}:{self.value}'
+        if self.value is not None: return f'{self.type}:{self.value}'
         return f'{self.type}'
 
 #################################
@@ -302,6 +304,13 @@ class Lexer:
                 break
 
         tok_type = KEYWORDS.get(id_str, "varident")
+        
+        # Handle boolean literals WIN and FAIL
+        if id_str == "WIN":
+            return Token(TK_BOOL, True)
+        elif id_str == "FAIL":
+            return Token(TK_BOOL, False)
+        
         return Token(tok_type, id_str if tok_type == "varident" else None)        
         
 #################################
