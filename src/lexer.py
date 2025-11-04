@@ -1,15 +1,236 @@
+"""
+WHY NOT USE REGEX?
+
+one of the benefits of this method is by showing which line the error is. Making it easier for us in the debugging phase
+specifically when working towards the logic of the actual language. Regex does not do this although it is a lot easier I suppose?
+"""
+
+#################################
+# Imports
+#################################
+
+import string
+
+#################################
+# Constants
+#################################
+
+DIGITS = '0123456789'
+LETTERS = string.ascii_letters
+SPECIAL = '?'
+LETTERS_DIGITS = LETTERS+DIGITS+SPECIAL
+
+
+#################################
+# ERROR
+#################################
+
+# Class handles error printing and tells what specific error there will be WIll add more in the future
+# Currently only Illegal characters will be displayed
+class Error:
+    def __init__(self, pos_start, pos_end, error_name, details):
+        self.pos_start = pos_start
+        self.pos_end = pos_end
+        self.error_name = error_name
+        self.details = details
+    
+    def as_string(self):
+        result = f'{self.error_name}: {self.details}'
+        result += f'File {self.pos_start.fn}, line {self.pos_start.ln +1}'
+        return result
+
+class IllegalCharError(Error):
+    def __init__(self, pos_start, pos_end, details):
+        super().__init__(pos_start, pos_end,'Illegal Character', details)
+
+
+
 #################################
 # TOKENS
 #################################
 
 
+TK_INT = "NUMBR"
+TK_FLOAT = "NUMBAR"
+TK_STING = "YARN"
+TK_BOOL = "TROOF"
+TK_VOID = "NOOB"
 
+KEYWORDS = {
+    'NUMBR' : "NUMBR Type Literal",
+    'NUMBAR' : "NUMBAR Type Literal",
+    'YARN' : "YARN Type Literal",
+    'TROOF' : "TROOF Type Literal",
+    "HAI" : "Start of Program",
+    "KTHXBYE" : "End of Program",
+    "BTW" : "Single-Line Comment Delimiter",
+    "OBTW" : "Multi-Line Comment Delimiter",
+    "TLDR" : "Multi-Line Comment Delimiter",
+    "ITZ" : "Variable Assignment",
+    "R" : "Assignment Operation",
+    "SUM OF" : "Addition Operator",
+    "DIFF OF" : "Subtraction Operator",
+    "PRODUKT OF" : "Multiplication Operator",
+    "QUOSHUNT OF" : "Quotient Operator",
+    "MOD OF" : "Modulo Operator",
+    "BIGGR OF" : "Max Operator",
+    "SMALLR OF" : "Min Operator",
+    "BOTH OF" : "And Operator",
+    "EITHER OF" : "Or Operator",
+    "WON OF" : "Xor Operator",
+    "NOT" : "Boolean Not Operator",
+    "ANY OF" : "Infinite Arity Or Operator",
+    "ALL OF" : "Infinite Arity And Operator",
+    "BOTH SAEM" : "Equal Operator",
+    "DIFFRINT" : "Not Equal Operator",
+    "SMOOSH" : "Concatenation Keyword",
+    "MAEK" : "Typecast Keyword",
+    'A' : "Typecast Keyword",
+    "IS NOW A" : "Typecast Keyword",
+    "VISIBLE" : "Output Keyword",
+    "GIMMEH" : "Input Keyword",
+    "O RLY?" : "Start of If-then Delimiter",
+    "YA RLY" : "If Keyword",
+    "MEBBE" : "Else-if Keyword",
+    "NO WAI" : "Else Keyword",
+    "OIC" : "End of If-then",
+    "WTF?" : "Start of Switch-case",
+    "OMG" : "Case Delimiter",
+    "OMGWTF" : "Default Case Keyword",
+    "IM IN YR" : "Loop Delimiter",
+    "UPPIN" : "Increment Keyword",
+    "NERFIN" : "Decrement Keyword",
+    "YR" : "Loop Operator-Variable Delimiter",
+    "TIL" : "Loop Until Keyword",
+    "WILE" : "Loop While Keyword",
+    "IM OUTTA YR" : "Loop Delimiter",
+    'NOOB' : "Type Literal",
+    "AN" : "Operator Delimiter",
+    "I HAS A" : "Variable Declaration",
+    "GTFO": "Break Keyword",
+    "MKAY": "Operation End"
+}
 
+# Contains the array of tokens taken from our lexer
 class Token:
-    def __init__(self, type_, value):
+    def __init__(self, type_, value=None):
         self.type = type_
         self.value = value
     
     def __repr__(self):
-        if self.value return f'{self.type}:{self.value}'
+        if self.value: return f'{self.type}:{self.value}'
         return f'{self.type}'
+
+#################################
+# POSITION
+#################################
+
+# defines the position of the string that is currently being read
+class Position:
+    def __init__(self, idx, ln, col, fn, ftxt):
+        self.idx = idx
+        self.ln = ln
+        self.col = col
+        self.fn = fn
+        self.ftxt = ftxt
+    
+    def advance (self, current_char):
+        self.idx += 1
+        self.col += 1
+
+        if current_char == "\n":
+            self.ln += 1
+            self.col = 0
+        return self
+    
+    def copy(self):
+        return Position(self.idx, self.ln, self.col, self.fn, self.ftxt)
+
+
+#################################
+# LEXER
+#################################
+
+
+class Lexer:
+    def __init__(self, fn, text):
+        self.fn = fn
+        self.text = text
+        self.pos = Position(-1, 0, -1, fn, text)
+        self.current_char = None
+        self.advance()
+
+    #  advances towards the next character in the inputted string
+    def advance(self):
+        self.pos.advance(self.current_char)
+        self.current_char = self.text[self.pos.idx] if self.pos.idx < len(self.text) else None
+    
+    def make_tokens(self):
+        tokens = []
+        
+        while self.current_char != None:
+            if self.current_char in ' \t': #skip if contains a space
+                self.advance()
+            elif self.current_char in LETTERS: # If it contains any letters check the format if it is a keyword otherwise it is just a variable
+                tokens.append(self.make_identifier())
+            elif self.current_char in DIGITS: # handles NUMBARS AND NUMBRS
+                tokens.append(self.make_number())
+                self.advance()
+            else:  # case when an illegal character has been found
+                pos_start = self.pos.copy()
+                char = self.current_char
+                self.advance()
+                return [], IllegalCharError(pos_start, self.pos, "'" + char + "'")
+
+        return tokens, None
+
+    # reads each line up until it stops reading a number.
+    def make_number(self):
+        num_str = ''
+        dot_count = 0
+
+        while self.current_char != None and self.current_char in DIGITS + '.':
+            if self.current_char == '.':
+                if dot_count == 1: break
+                dot_count += 1
+                num_str += '.'
+            else:
+                num_str += self.current_char
+            self.advance()
+
+        if dot_count == 0:
+            return Token(TK_INT, int(num_str))
+        else:
+            return Token(TK_FLOAT, float(num_str))
+
+
+    # TODO: MAKE it work for words that include spaces. currently in progress
+    # TODO: Allow it to detect YARN data types as "" are currently not included yet
+    #  reads a line up until it does not read a letter or a digit
+    def make_identifier(self):
+        id_str = ''
+        pos_start = self.pos.copy()
+        isIncomplete = False
+        incomplete = ['I', "SUM", "DIFF", "PRODUKT", "QUOSHUNT", "MOD",         
+                        "BIGGR", "SMALLR", "BOTH", "EITHER", "WON", "ANY", "ALL",
+                        "BOTH", "IS", "O", "YA", "NO", "IM"]
+
+        while (self.current_char != None and self.current_char in LETTERS_DIGITS + '_') or isIncomplete:
+            id_str += self.current_char
+            if self.current_char in incomplete:
+                isIncomplete = True
+                id_str += " "
+                self.advance()
+            self.advance()
+        tok_type = KEYWORDS[id_str] if id_str in KEYWORDS.keys() else "Vardent"
+        return Token(tok_type)
+
+#################################
+# RUN THE LEXER!!!
+#################################
+
+def run(fn, text):
+    lexer = Lexer(fn, text)
+    tokens, error = lexer.make_tokens()
+
+    return tokens, error
