@@ -216,11 +216,19 @@ class Lexer:
                         "BOTH", "IS", "O", "YA", "NO", "IM"]
 
         while (self.current_char != None and self.current_char in LETTERS_DIGITS + '_') or isIncomplete:
+            if self.current_char == None:
+                break
             id_str += self.current_char
-            if self.current_char in incomplete:
-                isIncomplete = True
-                id_str += " "
+
+ 
+            if id_str in KEYWORDS.keys() and isIncomplete:
                 self.advance()
+                break
+            if id_str in incomplete:
+                isIncomplete = True
+                id_str += " "   
+                self.advance()
+             
             self.advance()
         tok_type = KEYWORDS[id_str] if id_str in KEYWORDS.keys() else "Vardent"
         return Token(tok_type)
