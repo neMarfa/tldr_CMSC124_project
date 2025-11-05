@@ -150,12 +150,17 @@ class Position:
         self.fn = fn
         self.ftxt = ftxt
     
-    def advance (self, current_char):
+    def advance(self, current_char):
         self.idx += 1
         self.col += 1
 
         if current_char == "\n":
             self.ln += 1
+            self.col = 0
+        return self
+    
+        if current_char == "\n":
+            self.ln -= 1
             self.col = 0
         return self
     
@@ -180,7 +185,8 @@ class Lexer:
     def advance(self):
         self.pos.advance(self.current_char)
         self.current_char = self.text[self.pos.idx] if self.pos.idx < len(self.text) else None
-    
+
+
     def make_tokens(self):
         tokens = []
         
@@ -195,8 +201,12 @@ class Lexer:
             elif self.current_char in LETTERS: # If it contains any letters check the format if it is a keyword otherwise it is just a variable
                 tokens.append(self.make_identifier())
             elif self.current_char in DIGITS: # handles NUMBARS AND NUMBRS
-                tokens.append(self.make_number())
-                self.advance()
+                result = self.make_number()
+                if isinstance(result, tuple) and result[1] is not None:  # Error case
+                    return [], result[1]
+                else:
+                    tokens.append(result)
+                    self.advance()
             else:  # case when an illegal character has been found
                 pos_start = self.pos.copy()
                 char = self.current_char
@@ -210,6 +220,7 @@ class Lexer:
         num_str = ''
         dot_count = 0
 
+        #  goes through the numbers and sees if they are valid digits
         while self.current_char != None and self.current_char in DIGITS + '.':
             if self.current_char == '.':
                 if dot_count == 1: break
@@ -218,6 +229,12 @@ class Lexer:
             else:
                 num_str += self.current_char
             self.advance()
+
+        # if the last character is not a space or Nothing then it will throw an error
+        if self.current_char != None and self.current_char not in DIGITS+' ':
+            pos_start = self.pos.copy()
+            char = self.current_char    
+            return None, IllegalCharError(pos_start, self.pos, "'" + char + "' ")
 
         if dot_count == 0:
             return Token(TK_INT, int(num_str))
