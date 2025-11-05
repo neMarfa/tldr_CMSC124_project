@@ -67,6 +67,8 @@ KEYWORDS = {
     'TROOF' : "TROOF Type Literal",
     "HAI" : "Start of Program",
     "KTHXBYE" : "End of Program",
+    "WAZZUP" : "Variable Declaration Block Start",
+    "BUHBYE" : "Variable Declaration Block End",
     "BTW" : "Single-Line Comment Delimiter",
     "OBTW" : "Multi-Line Comment Delimiter",
     "TLDR" : "Multi-Line Comment Delimiter",
