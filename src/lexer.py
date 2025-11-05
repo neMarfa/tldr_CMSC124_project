@@ -159,11 +159,6 @@ class Position:
             self.col = 0
         return self
     
-        if current_char == "\n":
-            self.ln -= 1
-            self.col = 0
-        return self
-    
     def copy(self):
         return Position(self.idx, self.ln, self.col, self.fn, self.ftxt)
 
@@ -186,7 +181,6 @@ class Lexer:
         self.pos.advance(self.current_char)
         self.current_char = self.text[self.pos.idx] if self.pos.idx < len(self.text) else None
 
-
     def make_tokens(self):
         tokens = []
         
@@ -199,7 +193,14 @@ class Lexer:
                     return [], result[1]
                 tokens.append(result)
             elif self.current_char in LETTERS: # If it contains any letters check the format if it is a keyword otherwise it is just a variable
-                tokens.append(self.make_identifier())
+                result = self.make_identifier()
+                
+                # Check if it's a single-line comment keyword (BTW)
+                if isinstance(result, Token) and result.type == "Single-Line Comment Delimiter":
+                    self.skip_single_line_comment()
+                    continue
+                
+                tokens.append(result)
             elif self.current_char in DIGITS: # handles NUMBARS AND NUMBRS
                 result = self.make_number()
                 if isinstance(result, tuple) and result[1] is not None:  # Error case
@@ -328,7 +329,14 @@ class Lexer:
         elif id_str == "FAIL":
             return Token(TK_BOOL, False)
         
-        return Token(tok_type, id_str if tok_type == "varident" else None)        
+        return Token(tok_type, id_str if tok_type == "varident" else None)
+    
+    # skip single-line comment (BTW)
+    def skip_single_line_comment(self):
+        # Skip everything until end of line or end of file
+        while self.current_char != None and self.current_char != '\n':
+            self.advance()
+        # Don't advance past newline, let whitespace handler take care of it        
         
 #################################
 # RUN THE LEXER!!!
