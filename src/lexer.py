@@ -43,6 +43,10 @@ class IllegalCharError(Error):
     def __init__(self, pos_start, pos_end, details):
         super().__init__(pos_start, pos_end,'Illegal Character', details)
 
+class ExpectedCharError(Error):
+    def __init__(self, pos_start, pos_end, details):
+        super().__init__(pos_start, pos_end, 'Expected Character', details)
+
 
 
 #################################
@@ -52,7 +56,7 @@ class IllegalCharError(Error):
 
 TK_INT = "NUMBR"
 TK_FLOAT = "NUMBAR"
-TK_STING = "YARN"
+TK_STRING = "YARN"
 TK_BOOL = "TROOF"
 TK_VOID = "NOOB"
 
@@ -108,7 +112,9 @@ KEYWORDS = {
     'NOOB' : "Type Literal",
     "AN" : "Operator Delimiter",
     "GTFO": "Break Keyword",
-    "MKAY": "Operation End"
+    "MKAY": "Operation End",
+    "WIN" : "Boolean Literal (True)",
+    "FAIL" : "Boolean Literal (False)"
 }
 
 # for multi-word keywords
@@ -128,7 +134,7 @@ class Token:
         self.value = value
     
     def __repr__(self):
-        if self.value: return f'{self.type}:{self.value}'
+        if self.value is not None: return f'{self.type}:{self.value}'
         return f'{self.type}'
 
 #################################
@@ -179,8 +185,13 @@ class Lexer:
         tokens = []
         
         while self.current_char != None:
-            if self.current_char in ' \t': #skip if contains a space
+            if self.current_char in ' \t\n': #skip if contains a space, tab, or newline
                 self.advance()
+            elif self.current_char == '"': # handles YARN (string) literals
+                result = self.make_string()
+                if isinstance(result, tuple) and result[1] is not None:  # Error case
+                    return [], result[1]
+                tokens.append(result)
             elif self.current_char in LETTERS: # If it contains any letters check the format if it is a keyword otherwise it is just a variable
                 tokens.append(self.make_identifier())
             elif self.current_char in DIGITS: # handles NUMBARS AND NUMBRS
@@ -213,9 +224,36 @@ class Lexer:
         else:
             return Token(TK_FLOAT, float(num_str))
 
+    # reads a string literal enclosed in double quotes
+    def make_string(self):
+        string = ''
+        pos_start = self.pos.copy()
+        self.advance()  # skip opening quote
+        
+        # Check for empty string
+        if self.current_char == '"':
+            self.advance()  # skip closing quote
+            return Token(TK_STRING, '')
+        
+        while self.current_char != None and self.current_char != '"':
+            # Check for newline in string (unclosed string)
+            if self.current_char == '\n':
+                pos_end = self.pos.copy()
+                return None, ExpectedCharError(pos_start, pos_end, 'Unclosed string')
+            
+            string += self.current_char
+            self.advance()
+        
+        # Check if string was properly closed
+        if self.current_char == None:
+            pos_end = self.pos.copy()
+            return None, ExpectedCharError(pos_start, pos_end, 'Unclosed string')
+        
+        # Skip closing quote
+        self.advance()
+        return Token(TK_STRING, string)
 
     # TODO: MAKE it work for words that include spaces. currently in progress ==> check changes
-    # TODO: Allow it to detect YARN data types as "" are currently not included yet
     #  reads a line up until it does not read a letter or a digit
     def make_identifier(self):
         id_str = ''
@@ -266,6 +304,13 @@ class Lexer:
                 break
 
         tok_type = KEYWORDS.get(id_str, "varident")
+        
+        # Handle boolean literals WIN and FAIL
+        if id_str == "WIN":
+            return Token(TK_BOOL, True)
+        elif id_str == "FAIL":
+            return Token(TK_BOOL, False)
+        
         return Token(tok_type, id_str if tok_type == "varident" else None)        
         
 #################################
