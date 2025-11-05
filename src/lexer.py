@@ -201,7 +201,13 @@ class Lexer:
                 if isinstance(result, Token) and result.type == "Single-Line Comment Delimiter":
                     self.skip_single_line_comment()
                     continue
-                
+
+                # check if it's a multi-ine comment keyword
+                if isinstance(result, Token) and result.type == "Multi-Line Comment Delimiter" and result.value is None:
+                    error = self.skip_multi_line_comment()
+                    if error:
+                        return [], error
+                    continue
                 tokens.append(result)
             elif self.current_char in DIGITS: # handles NUMBARS AND NUMBRS
                 result = self.make_number()
@@ -234,7 +240,7 @@ class Lexer:
             self.advance()
 
         # if the last character is not a space or Nothing then it will throw an error
-        if self.current_char != None and self.current_char not in DIGITS+' ':
+        if self.current_char != None and self.current_char not in DIGITS+' \t\n':
             pos_start = self.pos.copy()
             char = self.current_char    
             return None, IllegalCharError(pos_start, self.pos, "'" + char + "' ")
@@ -330,6 +336,8 @@ class Lexer:
             return Token(TK_BOOL, True)
         elif id_str == "FAIL":
             return Token(TK_BOOL, False)
+        elif id_str == "OBTW":
+            return Token(tok_type, None)
         
         return Token(tok_type, id_str if tok_type == "varident" else None)
     
@@ -338,7 +346,43 @@ class Lexer:
         # Skip everything until end of line or end of file
         while self.current_char != None and self.current_char != '\n':
             self.advance()
-        # Don't advance past newline, let whitespace handler take care of it        
+        # Don't advance past newline, let whitespace handler take care of it     
+
+    # for OBTW 
+    def skip_multi_line_comment(self):
+        pos_start = self.pos.copy()
+
+        # skip whitespaces and new lines
+        while self.current_char in ' \t':
+            self.advance()
+        while self.current_char == '\n':
+            self.advance()
+
+        # look for end of comment ==> TLDR
+        while self.current_char != None:
+            if self.current_char == 'T':
+                # save curr position if ever needed (if the next word is not TLDR)
+                saved_pos = self.pos.copy()
+
+                # try try to read TLDR
+                temp_str = '' 
+                while self.current_char != None and self.current_char in LETTERS:
+                    temp_str += self.current_char
+                    self.advance()
+
+                if temp_str == 'TLDR':
+                    # end the multi-line comment, skip all na nasa line ng TLDR
+                    while self.current_char != None and self.current_char != '\n':
+                        self.advance()
+                    return None
+                else:
+                    # if the curr word na nir-read ay not TLDR
+                    self.pos = saved_pos
+                    self.current_char = self.text[self.pos.idx] if self.pos.idx < len(self.text) else None
+                    self.advance()
+            else:
+                self.advance()
+        # TODO :if end of file ay reached na due to the loop and wala yung TLDR ??
         
 #################################
 # RUN THE LEXER!!!
