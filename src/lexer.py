@@ -61,6 +61,7 @@ TK_BOOL = "TROOF"
 TK_VOID = "NOOB"
 TK_STRING_DELIMITER = "String Delimiter"
 TK_LITERAL = "literal"          # might use later
+TK_CONCAT = "Concatenation Operator"     # string concatenation operator
 
 KEYWORDS = {
     'NUMBR' : "NUMBR Type Literal",
@@ -219,6 +220,9 @@ class Lexer:
                 else:
                     tokens.append(result)
                     self.advance()
+            elif self.current_char == '+': # String concatenation operator
+                tokens.append(Token(TK_CONCAT, None))
+                self.advance()
             else:  # case when an illegal character has been found
                 pos_start = self.pos.copy()
                 char = self.current_char
