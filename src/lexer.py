@@ -59,6 +59,8 @@ TK_FLOAT = "NUMBAR"
 TK_STRING = "YARN"
 TK_BOOL = "TROOF"
 TK_VOID = "NOOB"
+TK_STRING_DELIMITER = "String Delimiter"
+TK_LITERAL = "literal"
 
 KEYWORDS = {
     'NUMBR' : "NUMBR Type Literal",
@@ -193,7 +195,7 @@ class Lexer:
                 result = self.make_string()
                 if isinstance(result, tuple) and result[1] is not None:  # Error case
                     return [], result[1]
-                tokens.append(result)
+                tokens.extend(result)
             elif self.current_char in LETTERS: # If it contains any letters check the format if it is a keyword otherwise it is just a variable
                 result = self.make_identifier()
                 
@@ -251,15 +253,20 @@ class Lexer:
             return Token(TK_FLOAT, float(num_str))
 
     # reads a string literal enclosed in double quotes
+    # returns: [String Delimiter, YARN:content, String Delimiter]
     def make_string(self):
         string = ''
         pos_start = self.pos.copy()
+        
+        # Create opening delimiter token
+        opening_delimiter = Token(TK_STRING_DELIMITER, None)
         self.advance()  # skip opening quote
         
         # Check for empty string
         if self.current_char == '"':
             self.advance()  # skip closing quote
-            return Token(TK_STRING, '')
+            closing_delimiter = Token(TK_STRING_DELIMITER, None)
+            return [opening_delimiter, Token(TK_STRING, ''), closing_delimiter]
         
         while self.current_char != None and self.current_char != '"':
             # Check for newline in string (unclosed string)
@@ -275,9 +282,14 @@ class Lexer:
             pos_end = self.pos.copy()
             return None, ExpectedCharError(pos_start, pos_end, 'Unclosed string')
         
-        # Skip closing quote
+        # Create YARN token with content
+        yarn_token = Token(TK_STRING, string)
+        
+        # Skip closing quote and create closing delimiter token
         self.advance()
-        return Token(TK_STRING, string)
+        closing_delimiter = Token(TK_STRING_DELIMITER, None)
+        
+        return [opening_delimiter, yarn_token, closing_delimiter]
 
     # TODO: MAKE it work for words that include spaces. currently in progress ==> check changes
     #  reads a line up until it does not read a letter or a digit
@@ -382,7 +394,10 @@ class Lexer:
                     self.advance()
             else:
                 self.advance()
-        # TODO :if end of file ay reached na due to the loop and wala yung TLDR ??
+        
+        # If end of file reached without finding TLDR, return error
+        pos_end = self.pos.copy()
+        return ExpectedCharError(pos_start, pos_end, 'Unclosed multi-line comment')
         
 #################################
 # RUN THE LEXER!!!
