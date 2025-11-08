@@ -60,7 +60,7 @@ TK_STRING = "YARN"
 TK_BOOL = "TROOF"
 TK_VOID = "NOOB"
 TK_STRING_DELIMITER = "String Delimiter"
-TK_LITERAL = "literal"
+TK_LITERAL = "literal"          # might use later
 
 KEYWORDS = {
     'NUMBR' : "NUMBR Type Literal",
@@ -206,6 +206,7 @@ class Lexer:
 
                 # check if it's a multi-ine comment keyword
                 if isinstance(result, Token) and result.type == "Multi-Line Comment Delimiter" and result.value is None:
+                    # Skip multi-line comment (OBTW ... TLDR)
                     error = self.skip_multi_line_comment()
                     if error:
                         return [], error
@@ -272,7 +273,7 @@ class Lexer:
             # Check for newline in string (unclosed string)
             if self.current_char == '\n':
                 pos_end = self.pos.copy()
-                return None, ExpectedCharError(pos_start, pos_end, 'Unclosed string')
+                return None, ExpectedCharError(pos_start, pos_end, 'Unclosed string - ')
             
             string += self.current_char
             self.advance()
@@ -280,7 +281,7 @@ class Lexer:
         # Check if string was properly closed
         if self.current_char == None:
             pos_end = self.pos.copy()
-            return None, ExpectedCharError(pos_start, pos_end, 'Unclosed string')
+            return None, ExpectedCharError(pos_start, pos_end, 'Unclosed string - ')
         
         # Create YARN token with content
         yarn_token = Token(TK_STRING, string)
@@ -360,14 +361,16 @@ class Lexer:
             self.advance()
         # Don't advance past newline, let whitespace handler take care of it     
 
-    # for OBTW 
+    # for OBTW
+    # TODO: OBTW must come first before TLDR
+    # TODO: OBTW and TLDR must have their own lines
     def skip_multi_line_comment(self):
         pos_start = self.pos.copy()
 
         # skip whitespaces and new lines
-        while self.current_char in ' \t':
+        while self.current_char != None and self.current_char in ' \t':
             self.advance()
-        while self.current_char == '\n':
+        while self.current_char != None and self.current_char == '\n':
             self.advance()
 
         # look for end of comment ==> TLDR
@@ -377,7 +380,8 @@ class Lexer:
                 saved_pos = self.pos.copy()
 
                 # try try to read TLDR
-                temp_str = '' 
+                temp_str = 'T'  # Start with 'T' 
+                self.advance()  # Move past 'T'
                 while self.current_char != None and self.current_char in LETTERS:
                     temp_str += self.current_char
                     self.advance()
@@ -397,7 +401,7 @@ class Lexer:
         
         # If end of file reached without finding TLDR, return error
         pos_end = self.pos.copy()
-        return ExpectedCharError(pos_start, pos_end, 'Unclosed multi-line comment')
+        return ExpectedCharError(pos_start, pos_end, 'Unclosed multi-line comment - ')
         
 #################################
 # RUN THE LEXER!!!
