@@ -36,7 +36,7 @@ class Error:
     
     def as_string(self):
         result = f'{self.error_name}: {self.details}'
-        result += f'File {self.pos_start.fn}, line {self.pos_start.ln +1}'
+        result += f'{self.pos_start.fn}, line {self.pos_start.ln +1}'
         return result
 
 class IllegalCharError(Error):
@@ -227,7 +227,7 @@ class Lexer:
                 pos_start = self.pos.copy()
                 char = self.current_char
                 self.advance()
-                return [], IllegalCharError(pos_start, self.pos, "'" + char + "'")
+                return [], IllegalCharError(pos_start, self.pos, "'" + char + "' ")
 
         return tokens, None
 
@@ -264,13 +264,13 @@ class Lexer:
         pos_start = self.pos.copy()
         
         # Create opening delimiter token
-        opening_delimiter = Token(TK_STRING_DELIMITER, None)
+        opening_delimiter = Token(TK_STRING_DELIMITER, '"')
         self.advance()  # skip opening quote
         
         # Check for empty string
         if self.current_char == '"':
             self.advance()  # skip closing quote
-            closing_delimiter = Token(TK_STRING_DELIMITER, None)
+            closing_delimiter = Token(TK_STRING_DELIMITER, '"')
             return [opening_delimiter, Token(TK_STRING, ''), closing_delimiter]
         
         while self.current_char != None and self.current_char != '"':
@@ -356,7 +356,7 @@ class Lexer:
         elif id_str == "OBTW":
             return Token(tok_type, None)
         
-        return Token(tok_type, id_str if tok_type == "varident" else None)
+        return Token(tok_type, id_str)
     
     # skip single-line comment (BTW)
     def skip_single_line_comment(self):

@@ -8,6 +8,7 @@ class LOLCodeGUI:
         self.root = root
         self.root.title("TL?DR CMSC 124 Project")
         self.root.geometry("1200x700")
+        self.file_name = "Untitled.lol"
         
         # variables to store program state
         self.tokens = []
@@ -166,7 +167,7 @@ class LOLCodeGUI:
     def open_file(self):
         filename = filedialog.askopenfilename(
             title="Select LOLCode File",
-            filetypes=[("LOL Files", "*.lol"), ("All Files", "*.*")]
+            filetypes=[("LOL Files", "*.lol")]
         )
         
         if filename:
@@ -178,6 +179,7 @@ class LOLCodeGUI:
                     self.current_file = filename
                     self.file_label.config(text=filename)
                     self.write_to_console(f"Loaded file: {filename}\n")
+                    self.file_name = filename
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to open file:\n{str(e)}")
     #------------------------------------------------------------------------------------------------------------
@@ -196,7 +198,7 @@ class LOLCodeGUI:
         self.write_to_console("=" * 50 + "\n")
         
         # run lexer
-        tokens, error = lexer.run("editor", code)
+        tokens, error = lexer.run(self.file_name, code)
         
         if error:
             self.write_to_console(f"LEXICAL ERROR: {error.as_string()}\n")
