@@ -15,10 +15,18 @@ from parser import *
 
 # Contains the array of tokens taken from our lexer
 class Token:
-    def __init__(self, type_, value=None):
+    def __init__(self, type_, value=None, pos_start=None, pos_end=None):
         self.type = type_
         self.value = value
-    
+
+        if pos_start:
+            self.pos_start = pos_start.copy()
+            self.pos_end = pos_start.copy()
+            self.pos_end.advance()
+
+        if pos_end:
+            self.pos_end = pos_end    
+
     def __repr__(self):
         if self.value is not None: return f'{self.type}:{self.value}'
         return f'{self.type}'
@@ -36,7 +44,7 @@ class Position:
         self.fn = fn
         self.ftxt = ftxt
     
-    def advance(self, current_char):
+    def advance(self, current_char=None):
         self.idx += 1
         self.col += 1
 
@@ -109,7 +117,7 @@ class Lexer:
                 char = self.current_char
                 self.advance()
                 return [], IllegalCharError(pos_start, self.pos, "'" + char + "' ")
-
+        tokens.append(Token(TK_EOF, pos_start=self.pos))
         return tokens, None
 
     # reads each line up until it stops reading a number.
@@ -169,11 +177,11 @@ class Lexer:
             return None, ExpectedCharError(pos_start, pos_end, 'Unclosed string - ')
         
         # Create YARN token with content
-        yarn_token = Token(TK_STRING, string)
+        yarn_token = Token(TK_STRING, string, pos_start, self.pos.copy())
         
         # Skip closing quote and create closing delimiter token
         self.advance()
-        closing_delimiter = Token(TK_STRING_DELIMITER, None)
+        closing_delimiter = Token(TK_STRING_DELIMITER, '"', pos_start, self.pos)
         
         return [opening_delimiter, yarn_token, closing_delimiter]
 
@@ -231,13 +239,13 @@ class Lexer:
         
         # Handle boolean literals WIN and FAIL
         if id_str == "WIN":
-            return Token(TK_BOOL, True)
+            return Token(TK_BOOL, True, pos_start, self.pos.copy())
         elif id_str == "FAIL":
-            return Token(TK_BOOL, False)
+            return Token(TK_BOOL, False, pos_start, self.pos.copy())
         elif id_str == "OBTW":
-            return Token(tok_type, None)
+            return Token(tok_type, None, pos_start, self.pos.copy())
         
-        return Token(tok_type, id_str)
+        return Token(tok_type, id_str, pos_start, self.pos.copy())
     
     # skip single-line comment (BTW)
     def skip_single_line_comment(self):
@@ -305,4 +313,4 @@ def run(fn, text):
     parser = Parser(tokens)
     ast = parser.parse()
 
-    return ast, None
+    return ast.node, ast.error
