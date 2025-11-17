@@ -1,4 +1,5 @@
 from constants import *
+from error import *
 
 #################################
 # INDIVIDUAL GRAMMAR ENTRIES FROM OUR DOCUMENT
@@ -10,6 +11,13 @@ class NumberNode:
     def __init__(self, tok):
         self.tok = tok
     
+    def __repr__(self):
+        return f'{self.tok}'
+
+class DelimiterNode:
+    def __init__(self, tok):
+        self.tok = tok
+
     def __repr__(self):
         return f'{self.tok}'
 
@@ -29,6 +37,30 @@ class ArithmeticNode:
 
     def __repr__(self):
         return f'({self.op_tok}, {self.left_node}, {self.separator_node}, {self.right_node})'
+
+
+#################################
+# RESULT
+#################################
+class ParserResult:
+    def __init__(self):
+        self.error = None
+        self.node = None
+    
+    def register(self, res):
+        if isinstance(res, ParserResult):
+            if res.error: self.error = res.error
+            return res.node
+        
+        return res
+    
+    def success(self, node):
+        self.node = node
+        return self
+    
+    def failure(self, error):
+        self.error = error
+        return self
 
 #################################
 # PARSER/CREATES THE TEE
@@ -50,32 +82,59 @@ class Parser:
     # TODO:make possible not only for arithmetic operations
     def parse(self):
         res = self.arithmetic_expr()
+        if not res.error and self.current_tok.type != TK_EOF:
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Code "))
         return res  
+
+    def delimiter_values(self):
+        res = ParserResult()
+        tok = self.current_tok
+        if tok.type == TK_DELIMITER:
+            res.register(self.advance())
+            return res.success(DelimiterNode(tok))
+        
+        return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected 'AN' "))
+ 
     
     # HANDLES ANYTHING INVOLVING NUMBERS
     def arithmetic_values(self):
+        res = ParserResult()
         tok = self.current_tok
         if tok.type in (TK_INT, TK_FLOAT):
-            self.advance()
-            return NumberNode(tok)
+            res.register(self.advance())
+            return res.success(NumberNode(tok))
+
+        return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected NUMBR or NUMBAR "))
 
     # SUM OF, MOD OF, ETC
     def arithmetic_ops(self):
+        res = ParserResult()
         tok = self.current_tok 
         if tok.value in arithmetic:
-            self.advance()
-            return ArithmeticOperationNode(tok)
+            res.register(self.advance())
+            return res.success(ArithmeticOperationNode(tok))
+        
+        return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected Arithmetic Operation "))
 
     # WHERE THE ARITHMETIC PARSE TREE BEGINS
-    # TODO: ALLOW NESTING OF OPERATIONS
     def arithmetic_expr(self):
-        start = self.arithmetic_ops()
-        left = self.arithmetic_values()
-
-        while self.current_tok.type == TK_DELIMITER:
-            delimiter = self.current_tok
-            self.advance()
-            right = self.arithmetic_values()
-            start = ArithmeticNode(start, left, delimiter, right)
+        res = ParserResult()
+        start = res.register(self.arithmetic_ops())
         
-        return start
+        if res.error: return res
+
+        if self.current_tok.value in arithmetic:
+            left = res.register(self.arithmetic_expr())
+            if res.error: return res
+        else:
+            left = res.register(self.arithmetic_values())
+            if res.error: return res
+
+        delimiter = res.register(self.delimiter_values())
+        if res.error: return res
+        
+        right = res.register(self.arithmetic_values())
+        if res.error: return res
+        start = ArithmeticNode(start, left, delimiter, right)
+        
+        return res.success(start)
