@@ -8,6 +8,7 @@ from error import *
 THESE CLASSES JUST PRINT OUT THE VALUES TO PRODUCE THE PARSE TREE NEEDED
 """
 
+
 class NumberNode:
     def __init__(self, tok):
         self.tok = tok
@@ -94,7 +95,7 @@ class Parser:
         res = ParserResult()
         tok = self.current_tok
         final_tok = self.tokens[-1]
-
+        ret = []
         # checks if the first character in the list of tokens is the start of program character
         if tok.value != "HAI":
             return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'HAI' "))
@@ -122,14 +123,17 @@ class Parser:
 
             if self.current_tok.value in arithmetic:
                 arith = self.arithmetic_expr()
+                if arith.error: return arith
                 statements.append(arith)
+                ret = arith
+            res.register(self.advance())
 
-            if self.current_tok not in arithmetic:
-                return res.failure(InvalidSyntaxError(final_tok.pos_start, final_tok.pos_end, "VERSION 1 ARITHMETIC ONLY "))
+            if self.current_tok.value == "KTHXBYE":
+                break
 
         statements.append(KeywordNode(final_tok))
         return res.success(statements)
-    
+
     def delimiter_values(self):
         res = ParserResult()
         tok = self.current_tok
@@ -163,20 +167,17 @@ class Parser:
     # WHERE THE ARITHMETIC PARSE TREE BEGINS
     def arithmetic_expr(self):
         res = ParserResult()
-        if self.current_tok.type == TK_NEWLINE:
-            res.register(self.advance())
 
         start = res.register(self.arithmetic_ops())
-        
         if res.error: return res
 
         # handles nested operations on the left side
         if self.current_tok.value in arithmetic:
             left = res.register(self.arithmetic_expr())
-            if res.error: return res
         else:
             left = res.register(self.arithmetic_values())
-            if res.error: return res
+
+        if res.error: return res
 
         # Checks for the delimiter AN
         delimiter = res.register(self.delimiter_values())
@@ -185,10 +186,9 @@ class Parser:
         # Handles nested operations on the right side 
         if self.current_tok.value in arithmetic:
             right = res.register(self.arithmetic_expr())
-            if res.error: return res
         else:
             right = res.register(self.arithmetic_values())
-            if res.error: return res
+        if res.error: return res
    
         start = ArithmeticNode(start, left, delimiter, right)
         
