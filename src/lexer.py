@@ -79,7 +79,10 @@ class Lexer:
         tokens = []
         
         while self.current_char != None:
-            if self.current_char in ' \t\n': #skip if contains a space, tab, or newline
+            if self.current_char in ' \t': #skip if contains a space, tab, or newline
+                self.advance()
+            elif self.current_char in '\n':
+                tokens.append(Token(TK_NEWLINE, "\\n"))
                 self.advance()
             elif self.current_char == '"': # handles YARN (string) literals
                 result = self.make_string()
@@ -117,7 +120,6 @@ class Lexer:
                 char = self.current_char
                 self.advance()
                 return [], IllegalCharError(pos_start, self.pos, "'" + char + "' ")
-        tokens.append(Token(TK_EOF, pos_start=self.pos))
         return tokens, None
 
     # reads each line up until it stops reading a number.
@@ -309,7 +311,9 @@ def run(fn, text):
     tokens, error = lexer.make_tokens()
     if error: return None, error
 
-    # for the parser
+
+    # return tokens, None
+    # # for the parser
     parser = Parser(tokens)
     ast = parser.parse()
 

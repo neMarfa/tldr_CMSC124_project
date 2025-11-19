@@ -16,7 +16,7 @@ LETTERS_DIGITS = LETTERS+DIGITS+SPECIAL
 
 arithmetic = ["SUM OF", "DIFF OF", "PRODUKT OF", "MOD OF", "QUOSHUNT OF", "BIGGR OF", "SMALLR OF"]
 
-
+TK_NEWLINE = "Newline"
 TK_INT = "NUMBR"
 TK_FLOAT = "NUMBAR"
 TK_STRING = "YARN"
@@ -26,7 +26,6 @@ TK_STRING_DELIMITER = "String Delimiter"
 TK_LITERAL = "literal"          # might use later
 TK_CONCAT = "Concatenation Operator"     # string concatenation operator
 TK_DELIMITER = "Operator Delimiter"
-TK_EOF = "EOF"
 
 KEYWORDS = {
     'NUMBR' : "NUMBR Type Literal",
