@@ -149,7 +149,7 @@ class Parser:
         while self.current_tok.type == TK_NEWLINE:
             res.register(self.advance())
 
-        # WARN: as of now this only accepts arithmetic values
+        # WARN: as of now this only accepts arithmetic values ==> added for printing & var dec
         while self.current_tok.value != "KTHXBYE":
             if self.current_tok.type == TK_NEWLINE:
                 res.register(self.advance())
@@ -169,7 +169,8 @@ class Parser:
                 if arith.error: return arith
                 statements.append(arith.node)
                 ret = arith
-            res.register(self.advance())
+            else: 
+                res.register(self.advance())
 
             if self.current_tok.value == "KTHXBYE":
                 break
