@@ -15,7 +15,7 @@ LETTERS_DIGITS = LETTERS+DIGITS+SPECIAL
 #################################
 
 arithmetic = ["SUM OF", "DIFF OF", "PRODUKT OF", "MOD OF", "QUOSHUNT OF", "BIGGR OF", "SMALLR OF"]
-
+function_specific = ["HOW IZ I", "I IZ"]
 TK_NEWLINE = "Newline"
 TK_INT = "NUMBR"
 TK_FLOAT = "NUMBAR"
@@ -73,6 +73,7 @@ KEYWORDS = {
     "OMGWTF" : "Default Case Keyword",
     "IM IN YR" : "Loop Delimiter",
     "HOW IZ I" : "Function declaration",
+    "IF YOU SAY SO" : "Function delimiter,",
     "I IZ" : "Function Calls",
     "FOUND YR": "Return call",
     "UPPIN" : "Increment Keyword",
@@ -96,5 +97,6 @@ MULTIWORD_PREFIXES = [
     'BIGGR', 'SMALLR', 'BOTH', 'EITHER', 'WON', 'ANY', 'ALL',
     'IS', 'IS NOW',                                          
     'O', 'YA', 'NO', 
-    'IM', 'IM IN', 'IM OUTTA', 'HOW', 'HOW IZ', 'FOUND YR', 'FOUND'                                 
+    'IM', 'IM IN', 'IM OUTTA', 'HOW', 'HOW IZ', 'FOUND YR', 'FOUND' , "IF",
+    "IF YOU", "IF YOU SAY", "IF YOU SAY SO"                                
 ]

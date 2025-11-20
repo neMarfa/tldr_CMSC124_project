@@ -61,7 +61,6 @@ class Position:
 # LEXER
 #################################
 
-
 class Lexer:
     def __init__(self, fn, text):
         self.fn = fn
@@ -90,7 +89,7 @@ class Lexer:
                     return [], result[1]
                 tokens.extend(result)
             elif self.current_char in LETTERS: # If it contains any letters check the format if it is a keyword otherwise it is just a variable
-                result = self.make_identifier()
+                result = self.make_identifier(tokens)
                 
                 if isinstance(result, tuple) and result[1] is not None:  # Error case
                     return [], result[1]
@@ -192,7 +191,7 @@ class Lexer:
 
     # TODO: MAKE it work for words that include spaces. currently in progress ==> check changes
     #  reads a line up until it does not read a letter or a digit
-    def make_identifier(self):
+    def make_identifier(self, tokens):
         id_str = ''
         pos_start = self.pos.copy()
         
@@ -255,6 +254,10 @@ class Lexer:
         if ' ' in id_str:
             return None, ExpectedCharError(pos_start, self.pos.copy(), 'Incomplete Keyword Error ')
 
+        # For case in functions
+        if len(tokens) != 0 and tokens[-1].value in function_specific:
+            tok_type = "Function Name"
+
         return Token(tok_type, id_str, pos_start, self.pos.copy())
     
     # skip single-line comment (BTW)
@@ -305,9 +308,6 @@ class Lexer:
         # If end of file reached without finding TLDR, return error
         pos_end = self.pos.copy()
         return ExpectedCharError(pos_start, pos_end, 'Unclosed multi-line comment - ')
-
-
-
 
 
 #################################
