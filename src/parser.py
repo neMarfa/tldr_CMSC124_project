@@ -40,6 +40,39 @@ class ArithmeticNode:
     def __repr__(self):
         return f'({self.op_tok}, {self.left_node}, {self.separator_node}, {self.right_node})'
 
+class IdentifierNode:
+    def __init__(self, tok):
+        self.tok = tok
+    
+    def __repr__(self):
+        return f'{self.tok}'
+
+class StringNode: 
+    def __init__(self, tok):
+        self.tok = tok
+    
+    def __repr__(self):
+        return f'{self.tok}'
+    
+class PrintNode: 
+    def __init__(self, keyword_tok, expressions):
+        self.keyword_tok = keyword_tok
+        self.expressions = expressions
+    
+    def __repr__(self):
+        return f'(VISIBLE, {", ".join(str(expr) for expr in self.expressions)})'
+    
+class VarDeclNode:
+    def __init__(self, keyword_tok, identifier_tok, assignment_tok=None, value_node=None):
+        self.keyword_tok = keyword_tok
+        self.identifier_tok = identifier_tok
+        self.assignment_tok = assignment_tok
+        self.value_node = value_node
+    
+    def __repr__(self):
+        if self.assignment_tok and self.value_node:
+            return f'(I HAS A, {self.identifier_tok}, {self.assignment_tok}, {self.value_node})'
+        return f'(I HAS A, {self.identifier_tok})'
 
 #################################
 # RESULT
@@ -121,10 +154,20 @@ class Parser:
             if self.current_tok.type == TK_NEWLINE:
                 res.register(self.advance())
 
-            if self.current_tok.value in arithmetic:
+            if self.current_tok.type == "Output Keyword":
+                print_stmt = self.print_statement()
+                if print_stmt.error: return print_stmt
+                statements.append(print_stmt.node)
+
+            elif self.current_tok.type == "Variable Declaration":
+                var_decl = self.var_declaration()
+                if var_decl.error: return var_decl
+                statements.append(var_decl.node)
+
+            elif self.current_tok.value in arithmetic:
                 arith = self.arithmetic_expr()
                 if arith.error: return arith
-                statements.append(arith)
+                statements.append(arith.node)
                 ret = arith
             res.register(self.advance())
 
@@ -193,3 +236,86 @@ class Parser:
         start = ArithmeticNode(start, left, delimiter, right)
         
         return res.success(start)
+    
+    def print_statement(self):
+      
+        # format: VISIBLE <expression> [AN <expression>]*
+        res = ParserResult()
+        tok = self.current_tok
+        
+        if tok.type != "Output Keyword":
+            return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected 'VISIBLE'"))
+        
+        res.register(self.advance())
+        
+        expressions = []
+        
+        expr = res.register(self.expression())
+        if res.error: return res
+        expressions.append(expr)
+        
+        # basically extends as long as there is a delimiter in the current statement
+        while self.current_tok and self.current_tok.type == TK_DELIMITER:   
+            res.register(self.advance())
+            expr = res.register(self.expression())
+            if res.error: return res
+            expressions.append(expr)
+        
+        return res.success(PrintNode(tok, expressions))
+
+    def var_declaration(self):
+        # format: I HAS A <identifier> [ITZ <expression>]
+        res = ParserResult()
+        tok = self.current_tok
+        
+        if tok.type != "Variable Declaration":
+            return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected 'I HAS A'"))
+        
+        res.register(self.advance())
+        
+        if self.current_tok.type != "varident":
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected identifier"))
+        
+        identifier_tok = self.current_tok
+        res.register(self.advance())
+        
+        if self.current_tok and self.current_tok.type == "Variable Assignment":
+            assignment_tok = self.current_tok
+            res.register(self.advance())
+            
+            value = res.register(self.expression())
+            if res.error: return res
+            
+            return res.success(VarDeclNode(tok, identifier_tok, assignment_tok, value))
+        
+        return res.success(VarDeclNode(tok, identifier_tok))
+
+    def expression(self):
+        """
+        Parses any expression (literals, identifiers, arithmetic, etc.)
+        """
+        res = ParserResult()
+        tok = self.current_tok
+        
+        if tok.type == TK_STRING_DELIMITER:
+            res.register(self.advance())
+            tok = self.current_tok
+        
+        if tok.value in arithmetic:
+            return self.arithmetic_expr()
+        
+        if tok.type in (TK_INT, TK_FLOAT):
+            res.register(self.advance())
+            return res.success(NumberNode(tok))
+        
+        if tok.type == TK_STRING:
+            res.register(self.advance())
+            if self.current_tok and self.current_tok.type == TK_STRING_DELIMITER:
+                res.register(self.advance())
+            return res.success(StringNode(tok))
+        
+        if tok.type == "varident":
+            res.register(self.advance())
+            return res.success(IdentifierNode(tok))
+        
+        return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected expression"))

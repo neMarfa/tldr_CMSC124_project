@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import font
 from tkinter import ttk, filedialog, scrolledtext, messagebox
 import lexer
+import parser
 
 class LOLCodeGUI:
     def __init__(self, root):
@@ -82,7 +83,7 @@ class LOLCodeGUI:
         self.text_editor = scrolledtext.ScrolledText(editor_inner, wrap=tk.WORD,
                                                      font=("Consolas", 11),
                                                      bg=text_bg, fg=text_fg,
-                                                     insertbackground="white",  # white cursor
+                                                     insertbackground="white",
                                                      selectbackground="#264f78")
         self.text_editor.pack(fill=tk.BOTH, expand=True, padx=5, pady=(0, 5))
 
@@ -197,31 +198,38 @@ class LOLCodeGUI:
         self.write_to_console("Executing code...\n")
         self.write_to_console("=" * 50 + "\n")
         
-        # run lexer
-        tokens, error = lexer.run(self.file_name, code)
+        # run LEXER
+        lex = lexer.Lexer(self.file_name, code)
+        tokens, lex_error = lex.make_tokens()
         
-        if error:
-            self.write_to_console(f"LEXICAL ERROR: {error.as_string()}\n")
+        if lex_error:
+            self.write_to_console(f"LEXICAL ERROR:\n{lex_error.as_string()}\n")
             return
         
-        # store tokens
-        self.tokens = tokens
-        
-        # update lexeme table
         self.update_lexeme_table(tokens)
+        # self.write_to_console(f"Lexer: {len(tokens)} tokens generated\n\n")       # for checking only
         
-        # parse and execute 
-        self.interpret_code(tokens)
+        # run PARSER (Syntax Analyzer)
+        self.write_to_console("SYNTAX ANALYZER:\n")
+        p = parser.Parser(tokens)
+        parse_result = p.parse()
+        
+        if parse_result.error:
+            self.write_to_console(f"SYNTAX ERROR:\n{parse_result.error.as_string()}\n")
+            return
+        
+        # display parse tree
+        self.write_to_console(f"Parse Tree: {parse_result.node}\n")
         
         self.write_to_console("\n" + "=" * 50 + "\n")
-        self.write_to_console("Execution completed!\n")
-    #------------------------------------------------------------------------------------------------------------
+        self.write_to_console("Syntax analysis completed!\n")
+    
     def update_lexeme_table(self, tokens):
         for token in tokens:
             lexeme = token.value if token.value is not None else token.type
             classification = token.type
             self.lexeme_tree.insert("", tk.END, values=(lexeme, classification))
-    #------------------------------------------------------------------------------------------------------------
+    
     def update_symbol_table(self, identifier, value):
         self.symbol_table[identifier] = value
         
@@ -231,63 +239,13 @@ class LOLCodeGUI:
         
         for var_name, var_value in self.symbol_table.items():
             self.symbol_tree.insert("", tk.END, values=(var_name, var_value))
-    #------------------------------------------------------------------------------------------------------------
-    def interpret_code(self, tokens):
-        i = 0
-        while i < len(tokens):
-            token = tokens[i]
-            
-            # handle variable declaration I HAS A var ITZ value
-            if token.type == "Variable Declaration":  # I HAS A 'to
-                if i + 2 < len(tokens):
-                    var_name = tokens[i + 1].value  # variable name
-                    # check for ITZ (assignment)
-                    if i + 2 < len(tokens) and tokens[i + 2].type == "Variable Assignment":
-                        if i + 3 < len(tokens):
-                            value = tokens[i + 3].value
-                            self.update_symbol_table(var_name, value)
-                            i += 4
-                            continue
-                    else:
-                        # varialble declared without value (NOOB)
-                        self.update_symbol_table(var_name, None)
-                        i += 2
-                        continue
-            
-            # handle VISIBLE (output)
-            elif token.type == "Output Keyword":  # VISIBLE
-                if i + 1 < len(tokens):
-                    next_token = tokens[i + 1]
-                    if next_token.type == "varident":
-                        # print variable value
-                        var_name = next_token.value
-                        if var_name in self.symbol_table:
-                            self.write_to_console(f"{self.symbol_table[var_name]}\n")
-                        else:
-                            self.write_to_console(f"Error: Variable '{var_name}' not found\n")
-                    else:
-                        # print literal value
-                        self.write_to_console(f"{next_token.value}\n")
-                    i += 2
-                    continue
-            
-            # handle assignment ==> var R value
-            elif token.type == "varident" and i + 2 < len(tokens):
-                if tokens[i + 1].type == "Assignment Operation":  # R
-                    var_name = token.value
-                    value = tokens[i + 2].value
-                    self.update_symbol_table(var_name, value)
-                    i += 3
-                    continue
-            
-            i += 1
-    #------------------------------------------------------------------------------------------------------------
+    
     def write_to_console(self, text):
         self.console.config(state=tk.NORMAL)
         self.console.insert(tk.END, text)
         self.console.see(tk.END)
         self.console.config(state=tk.DISABLED)
-    #------------------------------------------------------------------------------------------------------------
+    
     def clear_displays(self):
         for item in self.lexeme_tree.get_children():
             self.lexeme_tree.delete(item)
@@ -302,6 +260,7 @@ class LOLCodeGUI:
         self.console.config(state=tk.DISABLED)
 
 
-root = tk.Tk()
-app = LOLCodeGUI(root)
-root.mainloop()
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = LOLCodeGUI(root)
+    root.mainloop()

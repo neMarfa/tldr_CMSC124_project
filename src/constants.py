@@ -26,6 +26,10 @@ TK_STRING_DELIMITER = "String Delimiter"
 TK_LITERAL = "literal"          # might use later
 TK_CONCAT = "Concatenation Operator"     # string concatenation operator
 TK_DELIMITER = "Operator Delimiter"
+TK_VISIBLE = "Output Keyword"  
+TK_VARDECL = "Variable Declaration"  
+TK_VARASSIGN = "Variable Assignment"  
+TK_IDENTIFIER = "varident"  
 
 KEYWORDS = {
     'NUMBR' : "NUMBR Type Literal",
