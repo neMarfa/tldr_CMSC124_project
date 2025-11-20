@@ -82,7 +82,7 @@ class Lexer:
             if self.current_char in ' \t': #skip if contains a space, tab, or newline
                 self.advance()
             elif self.current_char in '\n':
-                tokens.append(Token(TK_NEWLINE, "\\n"))
+                tokens.append(Token(TK_NEWLINE, "\\n",self.pos.copy(), self.pos.copy()))
                 self.advance()
             elif self.current_char == '"': # handles YARN (string) literals
                 result = self.make_string()
@@ -92,6 +92,9 @@ class Lexer:
             elif self.current_char in LETTERS: # If it contains any letters check the format if it is a keyword otherwise it is just a variable
                 result = self.make_identifier()
                 
+                if isinstance(result, tuple) and result[1] is not None:  # Error case
+                    return [], result[1]
+
                 # Check if it's a single-line comment keyword (BTW)
                 if isinstance(result, Token) and result.type == "Single-Line Comment Delimiter":
                     self.skip_single_line_comment()
@@ -109,9 +112,9 @@ class Lexer:
                 result = self.make_number()
                 if isinstance(result, tuple) and result[1] is not None:  # Error case
                     return [], result[1]
-                else:
-                    tokens.append(result)
-                    self.advance()
+              
+                tokens.append(result)
+                self.advance()
             elif self.current_char == '+': # String concatenation operator
                 tokens.append(Token(TK_CONCAT, None))
                 self.advance()
@@ -126,7 +129,7 @@ class Lexer:
     def make_number(self):
         num_str = ''
         dot_count = 0
-
+        pos_start = self.pos.copy()
         #  goes through the numbers and sees if they are valid digits
         while self.current_char != None and self.current_char in DIGITS + '.':
             if self.current_char == '.':
@@ -144,9 +147,9 @@ class Lexer:
             return None, IllegalCharError(pos_start, self.pos, "'" + char + "' ")
 
         if dot_count == 0:
-            return Token(TK_INT, int(num_str))
+            return Token(TK_INT, int(num_str), pos_start, self.pos.copy())
         else:
-            return Token(TK_FLOAT, float(num_str))
+            return Token(TK_FLOAT, float(num_str), pos_start, self.pos.copy())
 
     # reads a string literal enclosed in double quotes
     # returns: [String Delimiter, YARN:content, String Delimiter]
@@ -155,13 +158,13 @@ class Lexer:
         pos_start = self.pos.copy()
         
         # Create opening delimiter token
-        opening_delimiter = Token(TK_STRING_DELIMITER, '"')
+        opening_delimiter = Token(TK_STRING_DELIMITER, '"', pos_start, self.pos.copy())
         self.advance()  # skip opening quote
         
         # Check for empty string
         if self.current_char == '"':
             self.advance()  # skip closing quote
-            closing_delimiter = Token(TK_STRING_DELIMITER, '"')
+            closing_delimiter = Token(TK_STRING_DELIMITER, '"', pos_start, self.pos.copy())
             return [opening_delimiter, Token(TK_STRING, ''), closing_delimiter]
         
         while self.current_char != None and self.current_char != '"':
@@ -238,15 +241,20 @@ class Lexer:
                 break
 
         tok_type = KEYWORDS.get(id_str, "varident")
-        
+
+        if id_str in KEYWORDS.keys():
+            return Token(tok_type, id_str, pos_start, self.pos.copy())
         # Handle boolean literals WIN and FAIL
-        if id_str == "WIN":
+        elif id_str == "WIN":
             return Token(TK_BOOL, True, pos_start, self.pos.copy())
         elif id_str == "FAIL":
             return Token(TK_BOOL, False, pos_start, self.pos.copy())
         elif id_str == "OBTW":
             return Token(tok_type, None, pos_start, self.pos.copy())
         
+        if ' ' in id_str:
+            return None, ExpectedCharError(pos_start, self.pos.copy(), 'Incomplete Keyword Error ')
+
         return Token(tok_type, id_str, pos_start, self.pos.copy())
     
     # skip single-line comment (BTW)
@@ -317,4 +325,9 @@ def run(fn, text):
     parser = Parser(tokens)
     ast = parser.parse()
 
-    return ast.node, ast.error
+
+    # print(ast.error)
+    # if ast.error: return None, ast.error
+
+    return tokens, None
+    # return ast.node, ast.error

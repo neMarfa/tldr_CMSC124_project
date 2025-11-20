@@ -72,9 +72,12 @@ KEYWORDS = {
     "OMG" : "Case Delimiter",
     "OMGWTF" : "Default Case Keyword",
     "IM IN YR" : "Loop Delimiter",
+    "HOW IZ I" : "Function declaration",
+    "I IZ" : "Function Calls",
+    "FOUND YR": "Return call",
     "UPPIN" : "Increment Keyword",
     "NERFIN" : "Decrement Keyword",
-    "YR" : "Loop Operator-Variable Delimiter",
+    "YR" : "Variable Delimiter",
     "TIL" : "Loop Until Keyword",
     "WILE" : "Loop While Keyword",
     "IM OUTTA YR" : "Loop Delimiter",
@@ -93,5 +96,5 @@ MULTIWORD_PREFIXES = [
     'BIGGR', 'SMALLR', 'BOTH', 'EITHER', 'WON', 'ANY', 'ALL',
     'IS', 'IS NOW',                                          
     'O', 'YA', 'NO', 
-    'IM', 'IM IN', 'IM OUTTA'                                 
+    'IM', 'IM IN', 'IM OUTTA', 'HOW', 'HOW IZ', 'FOUND YR', 'FOUND'                                 
 ]
