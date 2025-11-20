@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import font
 from tkinter import ttk, filedialog, scrolledtext, messagebox
 import lexer
-import parser
+import parser 
 
 class LOLCodeGUI:
     def __init__(self, root):
@@ -101,7 +101,7 @@ class LOLCodeGUI:
                                       font=("Helvetica", 10, "bold"), bg=frame_color, fg=text_fg)
         lexemes_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
         
-        # treeviwew for lexemes
+        # treeview for lexemes
         lexeme_container = tk.Frame(lexemes_frame, bg=frame_color)
         lexeme_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
@@ -188,7 +188,7 @@ class LOLCodeGUI:
         # reset previous executions
         self.clear_displays()
         
-        # get code from thwe text editor section
+        # get code from the text editor section
         code = self.text_editor.get("1.0", tk.END).strip()
         
         if not code:
@@ -198,38 +198,42 @@ class LOLCodeGUI:
         self.write_to_console("Executing code...\n")
         self.write_to_console("=" * 50 + "\n")
         
-        # run LEXER
+        # run lexer
         lex = lexer.Lexer(self.file_name, code)
-        tokens, lex_error = lex.make_tokens()
+        tokens, error = lex.make_tokens()
         
-        if lex_error:
-            self.write_to_console(f"LEXICAL ERROR:\n{lex_error.as_string()}\n")
+        if error:
+            self.write_to_console(f"LEXICAL ERROR: {error.as_string()}\n")
             return
         
+        # store tokens and update lexeme table
+        self.tokens = tokens
         self.update_lexeme_table(tokens)
-        # self.write_to_console(f"Lexer: {len(tokens)} tokens generated\n\n")       # for checking only
         
-        # run PARSER (Syntax Analyzer)
-        self.write_to_console("SYNTAX ANALYZER:\n")
+        # run parser (syntax analyzer)
+        self.write_to_console("\nSYNTAX ANALYZER:\n")
         p = parser.Parser(tokens)
         parse_result = p.parse()
         
         if parse_result.error:
-            self.write_to_console(f"SYNTAX ERROR:\n{parse_result.error.as_string()}\n")
+            self.write_to_console(f"SYNTAX ERROR: {parse_result.error.as_string()}\n")
             return
         
         # display parse tree
         self.write_to_console(f"Parse Tree: {parse_result.node}\n")
         
+        # extract variables from parse tree for symbol table
+        self.extract_variables_from_tree(parse_result.node)
+        
         self.write_to_console("\n" + "=" * 50 + "\n")
         self.write_to_console("Syntax analysis completed!\n")
-    
+    #------------------------------------------------------------------------------------------------------------
     def update_lexeme_table(self, tokens):
         for token in tokens:
             lexeme = token.value if token.value is not None else token.type
             classification = token.type
             self.lexeme_tree.insert("", tk.END, values=(lexeme, classification))
-    
+    #------------------------------------------------------------------------------------------------------------
     def update_symbol_table(self, identifier, value):
         self.symbol_table[identifier] = value
         
@@ -239,13 +243,36 @@ class LOLCodeGUI:
         
         for var_name, var_value in self.symbol_table.items():
             self.symbol_tree.insert("", tk.END, values=(var_name, var_value))
-    
+    #------------------------------------------------------------------------------------------------------------
+    def extract_variables_from_tree(self, statements):
+        if not isinstance(statements, list):
+            return
+        
+        for stmt in statements:
+            # check if it's a vardeclnode
+            if type(stmt).__name__ == 'VarDeclNode':
+                var_name = stmt.identifier_tok.value
+                
+                # get the value if it exists
+                if hasattr(stmt, 'value_node') and stmt.value_node:
+                    value_node = stmt.value_node
+                    
+                    # extract value based on node type
+                    if hasattr(value_node, 'tok'):
+                        value = value_node.tok.value
+                    else:
+                        value = str(value_node)
+                else:
+                    value = "NOOB"
+                
+                self.update_symbol_table(var_name, value)
+    #------------------------------------------------------------------------------------------------------------
     def write_to_console(self, text):
         self.console.config(state=tk.NORMAL)
         self.console.insert(tk.END, text)
         self.console.see(tk.END)
         self.console.config(state=tk.DISABLED)
-    
+    #------------------------------------------------------------------------------------------------------------
     def clear_displays(self):
         for item in self.lexeme_tree.get_children():
             self.lexeme_tree.delete(item)
@@ -260,7 +287,6 @@ class LOLCodeGUI:
         self.console.config(state=tk.DISABLED)
 
 
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = LOLCodeGUI(root)
-    root.mainloop()
+root = tk.Tk()
+app = LOLCodeGUI(root)
+root.mainloop()
