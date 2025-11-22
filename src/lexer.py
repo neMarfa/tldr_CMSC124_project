@@ -1,10 +1,3 @@
-"""
-WHY NOT USE REGEX?
-
-one of the benefits of this method is by showing which line the error is. Making it easier for us in the debugging phase
-specifically when working towards the logic of the actual language. Regex does not do this although it is a lot easier I suppose?
-"""
-
 #################################
 # Imports
 #################################
@@ -12,6 +5,7 @@ specifically when working towards the logic of the actual language. Regex does n
 from error import *
 from constants import *
 from parser import *
+from interpreter import *
 
 # Contains the array of tokens taken from our lexer
 class Token:
@@ -117,6 +111,12 @@ class Lexer:
             elif self.current_char == '+': # String concatenation operator
                 tokens.append(Token(TK_CONCAT, None))
                 self.advance()
+            elif self.current_char == '-': # String concatenation operator
+                pos_start = self.pos.copy()
+                tokens.append(Token(TK_NEG, '-', pos_start, self.pos))
+                self.advance()
+                if self.current_char not in DIGITS:
+                    return [], IllegalCharError(pos_start, self.pos, "'-' ")
             else:  # case when an illegal character has been found
                 pos_start = self.pos.copy()
                 char = self.current_char
@@ -143,6 +143,7 @@ class Lexer:
         if self.current_char != None and self.current_char not in DIGITS+' \t\n':
             pos_start = self.pos.copy()
             char = self.current_char    
+            self.advance()
             return None, IllegalCharError(pos_start, self.pos, "'" + char + "' ")
 
         if dot_count == 0:
@@ -258,6 +259,9 @@ class Lexer:
         if len(tokens) != 0 and tokens[-1].value in function_specific:
             tok_type = "Function Name"
 
+        if len(tokens) != 0 and tokens[-1].value in loop_specific:
+            tok_type = "Loop Identifier"
+
         return Token(tok_type, id_str, pos_start, self.pos.copy())
     
     # skip single-line comment (BTW)
@@ -327,7 +331,12 @@ def run(fn, text):
 
 
     # print(ast.error)
-    # if ast.error: return None, ast.error
+    if ast.error: return None, ast.error
+
+
+    # interprester = Interpreter()
+    # interpreter.visit(ast.node)
+
 
     return tokens, None
     # return ast.node, ast.error

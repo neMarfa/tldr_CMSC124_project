@@ -6,7 +6,7 @@ import string
 
 DIGITS = '0123456789'
 LETTERS = string.ascii_letters
-SPECIAL = '?'
+SPECIAL = '?_'
 LETTERS_DIGITS = LETTERS+DIGITS+SPECIAL
 
 
@@ -14,9 +14,13 @@ LETTERS_DIGITS = LETTERS+DIGITS+SPECIAL
 # TOKENS
 #################################
 
-arithmetic = ["SUM OF", "DIFF OF", "PRODUKT OF", "MOD OF", "QUOSHUNT OF", "BIGGR OF", "SMALLR OF"]
+arithmetic = ["SUM OF", "DIFF OF", "PRODUKT OF", "MOD OF", "QUOSHUNT OF"]
+comparison = ["BIGGR OF", "SMALLR OF"]
 function_specific = ["HOW IZ I", "I IZ"]
+loop_specific = ["IM IN YR", "IM OUTTA YR"]
 TK_NEWLINE = "Newline"
+
+TK_NEG = "Negation Symbol"
 TK_INT = "NUMBR"
 TK_FLOAT = "NUMBAR"
 TK_STRING = "YARN"

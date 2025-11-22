@@ -12,9 +12,18 @@ THESE CLASSES JUST PRINT OUT THE VALUES TO PRODUCE THE PARSE TREE NEEDED
 class NumberNode:
     def __init__(self, tok):
         self.tok = tok
+        self.pos_start = self.tok.pos_start
+        self.pos_end = self.tok.pos_end
     
     def __repr__(self):
         return f'{self.tok}'
+
+# WILL HOLD ALL THE STATEMENTS
+class ListNode:
+    def __init__(self, statement_nodes, pos_start, pos_end):
+        self.statement_nodes = statement_nodes
+        self.pos_start = pos_start
+        self.pos_end = pos_end    
 
 class KeywordNode:
     def __init__(self, tok):
@@ -23,9 +32,23 @@ class KeywordNode:
     def __repr__(self):
         return f'{self.tok}'
 
+class NegationNode:        
+    def __init__(self, op_tok, node):
+        self.op_tok = op_tok
+        self.node = node
+
+        self.pos_start = op_tok.pos_start
+        self.pos_end = node.pos_end
+    
+    def __repr__(self):
+        return f'({self.op_tok, {self.node}})'
+
+
 class ArithmeticOperationNode:
     def __init__(self,op_tok):
         self.op_tok = op_tok
+        self.value = op_tok.value
+        self.pos_start = op_tok.pos_start
     
     def __repr__(self):
         return f'{self.op_tok}'
@@ -36,9 +59,53 @@ class ArithmeticNode:
         self.left_node = left_node
         self.right_node = right_node
         self.separator_node = separator_node
+        self.pos_start = self.op_tok.pos_start
+        self.pos_end = self.right_node.pos_end
 
     def __repr__(self):
         return f'({self.op_tok}, {self.left_node}, {self.separator_node}, {self.right_node})'
+
+class LoopDeclarationNode:
+    def __init__(self, op_tok, label, operation, varident, expression):
+        self.op_tok = op_tok
+        self.label = label
+        self.operation = operation
+        self.varident = varident
+        self.expression = expression
+        self.pos_start = op_tok.pos_start
+        self.pos_end = expression.pos_end
+    
+    def __repr__(self):
+        return f'{self.op_tok}, {self.label}, {self.operation}, {self.varident}, {self.expression}'
+
+class LoopEndNode:
+    def __init__(self, end_tok, label):
+        self.end_tok = end_tok
+        self.label = label
+        self.pos_start = end_tok.pos_start
+        self.pos_end = label.pos_end
+
+    def __repr__(self):
+        return f'{self.end_tok}, {self.label}'
+
+class LoopNode:
+    def __init__(self, start, statements, end):
+        self.start = start
+        self.statements = statements
+        self.end = end
+        self.pos_start = start.pos_start
+        self.pos_end = end.pos_end
+    
+    def __repr__(self):
+        return f'{self.start}, {self.statements}, {self.end}'
+
+class BreakNode:
+    def __init__(self, tok, pos_start, pos_end):
+        self.pos_start = pos_start
+        self.pos_end = pos_end
+    
+    def __repr__(self):
+        return f'{self.tok}'
 
 class IdentifierNode:
     def __init__(self, tok):
@@ -128,11 +195,11 @@ class Parser:
         res = ParserResult()
         tok = self.current_tok
         final_tok = self.tokens[-1]
-        ret = []
+        pos_start = self.current_tok.pos_start.copy()
+        statements = []
         # checks if the first character in the list of tokens is the start of program character
         if tok.value != "HAI":
             return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'HAI' "))
-        statements = [KeywordNode(tok)]
         res.register(self.advance())
 
         if self.current_tok.type != TK_NEWLINE:
@@ -151,32 +218,51 @@ class Parser:
 
         # WARN: as of now this only accepts arithmetic values ==> added for printing & var dec
         while self.current_tok.value != "KTHXBYE":
-            if self.current_tok.type == TK_NEWLINE:
-                res.register(self.advance())
-
-            if self.current_tok.type == "Output Keyword":
-                print_stmt = self.print_statement()
-                if print_stmt.error: return print_stmt
-                statements.append(print_stmt.node)
-
-            elif self.current_tok.type == "Variable Declaration":
-                var_decl = self.var_declaration()
-                if var_decl.error: return var_decl
-                statements.append(var_decl.node)
-
-            elif self.current_tok.value in arithmetic:
-                arith = self.arithmetic_expr()
-                if arith.error: return arith
-                statements.append(arith.node)
-                ret = arith
-            else: 
-                res.register(self.advance())
-
+            
+            err = self.statement_section(statements)
+            if err != None: return err
+            
             if self.current_tok.value == "KTHXBYE":
                 break
+            
+            res.register(self.advance())
 
-        statements.append(KeywordNode(final_tok))
+        # for testing interpreter
+        # return res.success(ListNode(statements, pos_start, self.current_tok.pos_start.copy()))
+
+        # for testing syntax tree
         return res.success(statements)
+
+    # PLACE ALL THE STATEMENTS HERE, WILL BE REUSED IN FUNCTIONS AND LOOPS
+    def statement_section(self, statements):
+        res = ParserResult()
+
+        if self.current_tok.type == TK_NEWLINE:
+            res.register(self.advance())
+
+        if self.current_tok.type == "Output Keyword":
+            print_stmt = self.print_statement()
+            if print_stmt.error: return print_stmt
+            statements.append(print_stmt.node)
+
+        elif self.current_tok.type == "Variable Declaration":
+            var_decl = self.var_declaration()
+            if var_decl.error: return var_decl
+            statements.append(var_decl.node)
+
+        elif self.current_tok.value in arithmetic:
+            arith = self.arithmetic_expr()
+            if arith.error: return arith
+            statements.append(arith.node)
+            ret = arith
+
+        elif self.current_tok.value == "IM IN YR":
+            loop = self.loop()
+            if loop.error: return loop
+            statements.append(loop.node)
+        
+        return None
+
 
     def delimiter_values(self):
         res = ParserResult()
@@ -192,7 +278,8 @@ class Parser:
     def arithmetic_values(self):
         res = ParserResult()
         tok = self.current_tok
-        if tok.type in (TK_INT, TK_FLOAT):
+        print(tok.type)
+        if tok.type in (TK_INT, TK_FLOAT, "varident"):
             res.register(self.advance())
             return res.success(NumberNode(tok))
 
@@ -208,6 +295,22 @@ class Parser:
         
         return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected Arithmetic Operation "))
 
+    # handles negative values
+    def negation_op(self):
+        res = ParserResult()
+        neg_tok = self.current_tok
+        if neg_tok.type == TK_NEG:
+            res.register(self.advance())
+            if self.current_tok.type == TK_NEG:
+                right = res.register(self.negation_op())
+            else:
+                right = res.register(self.arithmetic_values())
+            if res.error: return right
+            return res.success(NegationNode(neg_tok, right))
+        
+        return res.failure(InvalidSyntaxError(neg_tok.pos_start, neg_tok.pos_end, "Expected '-'"))
+
+
     # WHERE THE ARITHMETIC PARSE TREE BEGINS
     def arithmetic_expr(self):
         res = ParserResult()
@@ -215,9 +318,12 @@ class Parser:
         start = res.register(self.arithmetic_ops())
         if res.error: return res
 
+
         # handles nested operations on the left side
         if self.current_tok.value in arithmetic:
             left = res.register(self.arithmetic_expr())
+        elif self.current_tok.type == TK_NEG:
+            left = res.register(self.negation_op())
         else:
             left = res.register(self.arithmetic_values())
 
@@ -230,6 +336,8 @@ class Parser:
         # Handles nested operations on the right side 
         if self.current_tok.value in arithmetic:
             right = res.register(self.arithmetic_expr())
+        elif self.current_tok.type == TK_NEG:
+            right = res.register(self.negation_op())
         else:
             right = res.register(self.arithmetic_values())
         if res.error: return res
@@ -290,6 +398,100 @@ class Parser:
             return res.success(VarDeclNode(tok, identifier_tok, assignment_tok, value))
         
         return res.success(VarDeclNode(tok, identifier_tok))
+
+# used for the loop_declaration part
+# TODO: ADD CONDITIONAL OPERATORS
+    def loop_declaration(self):
+        res = ParserResult()
+        declaration = self.current_tok 
+
+        if declaration.value != "IM IN YR":
+            return res.failure(InvalidSyntaxError(declaration.pos_start, declaration.pos_end, "Expected Function Declaration 'IM IN YR'"))
+        
+        res.register(self.advance())
+
+        label = self.current_tok
+
+        if label.type != "Loop Identifier":
+            return res.failure(InvalidSyntaxError(label.pos_start, label.pos_end, "Expected Loop Label"))
+
+        res.register(self.advance())
+
+        operation = self.current_tok
+
+        if operation.value not in ("UPPIN", "NERFIN"):
+            return res.failure(InvalidSyntaxError(operation.pos_start, operation.pos_end, "Expected Operation Value 'UPPIN' or 'NERFIN'"))
+        
+        res.register(self.advance())
+
+        # Checks for the delimiter YR
+        delimiter = self.current_tok
+
+        if delimiter.value != 'YR':
+            return res.failure(InvalidSyntaxError(delimiter.pos_start, delimiter.pos_end, "Expected 'YR' "))
+        
+        res.register(self.advance())
+
+        varident = self.current_tok
+
+        if varident.type != "varident":
+            return res.failure(InvalidSyntaxError(varident.pos_start, varident.pos_end, "Expected Varident "))
+
+        res.register(self.advance())
+
+        expression = self.current_tok
+
+        # TODO: ADD CONDITIONAL OPERATORS
+        if expression.value not in ("TIL", "WILE"):
+            return res.failure(InvalidSyntaxError(expression.pos_start, expression.pos_end, "Expected Expression 'TIL' or 'WILE' "))
+
+        res.register(self.advance())
+
+        return res.success(LoopDeclarationNode(declaration, label, operation, varident, expression))
+
+    # for the loop delimiter
+    def loop_end(self):
+        res = ParserResult()
+        declaration = self.current_tok 
+
+        if declaration.value != "IM OUTTA YR":
+            return res.failure(InvalidSyntaxError(declaration.pos_start, declaration.pos_end, "Expected Function Declaration 'IM IN YR' "))
+        
+        res.register(self.advance())
+
+        label = self.current_tok
+
+        if label.type != "Loop Identifier":
+            return res.failure(InvalidSyntaxError(label.pos_start, label.pos_end, "Expected Loop Label " ))
+        
+        res.register(self.advance())
+
+        return res.success(LoopEndNode(declaration, label))
+
+    # responsible for the loop
+    def loop(self):
+        res = ParserResult()
+
+        start = self.loop_declaration()
+        print(start.node)
+        if start.error: return start
+
+        statements = []
+
+        while self.current_tok.value != "IM OUTTA YR":
+
+            err = self.statement_section(statements)
+            if err != None: return err
+
+            if self.current_tok.value == "IM OUTTA YR":
+                break
+        
+            res.register(self.advance())
+
+        end = self.loop_end()
+        
+        return res.success(LoopNode(start.node, statements, end.node))
+
 
     def expression(self):
         """
