@@ -1,6 +1,9 @@
 from constants import *
 from error import *
 
+# Use comparison list from constants (same pattern as arithmetic)
+comparison_ops = comparison
+
 #################################
 # INDIVIDUAL GRAMMAR ENTRIES FROM OUR DOCUMENT
 #################################
@@ -146,15 +149,16 @@ class VarDeclNode:
         return f'(I HAS A, {self.identifier_tok})'
 
 class ComparisonNode:
-    def __init__(self, op_tok, left_node, right_node):
-        self.op_tok = op_tok  # BOTH SAEM or DIFFRINT
+    def __init__(self, op_tok, left_node, separator_node, right_node):
+        self.op_tok = op_tok 
         self.left_node = left_node
         self.right_node = right_node
+        self.separator_node = separator_node
         self.pos_start = op_tok.pos_start
         self.pos_end = right_node.pos_end
     
     def __repr__(self):
-        return f'({self.op_tok}, {self.left_node}, {self.right_node})'
+        return f'({self.op_tok}, {self.left_node}, {self.separator_node}, {self.right_node})'
 
 #################################
 # RESULT
@@ -364,36 +368,32 @@ class Parser:
     def comparison_expr(self):
         res = ParserResult()
         
-        # Check if it's a comparison operator
-        if self.current_tok.value not in ("BOTH SAEM", "DIFFRINT"):
+        # Check if it's a comparison operator (BOTH SAEM, DIFFRINT) or comparison operation (BIGGR OF, SMALLR OF)
+        if self.current_tok.value not in ("BOTH SAEM", "DIFFRINT") and self.current_tok.value not in comparison_ops:
             return res.failure(InvalidSyntaxError(
                 self.current_tok.pos_start, 
                 self.current_tok.pos_end, 
-                "Expected 'BOTH SAEM' or 'DIFFRINT'"
+                "Expected 'BOTH SAEM', 'DIFFRINT', 'BIGGR OF', or 'SMALLR OF'"
             ))
         
         op_tok = self.current_tok
         res.register(self.advance())
         
-        # Parse left expression (can be arithmetic, identifier, etc.)
+        # Parse left expression (can be arithmetic, identifier, nested comparisons, etc.)
         left = res.register(self.expression())
         if res.error: return res
         
         # Check for AN delimiter
-        if self.current_tok.type != TK_DELIMITER:
-            return res.failure(InvalidSyntaxError(
-                self.current_tok.pos_start,
-                self.current_tok.pos_end,
-                "Expected 'AN'"
-            ))
-        
-        res.register(self.advance())
+        delimiter = res.register(self.delimiter_values())
+        if res.error: return res
         
         # Parse right expression
         right = res.register(self.expression())
         if res.error: return res
         
-        return res.success(ComparisonNode(op_tok, left, right))
+        # All comparison operations use the same node type
+        # The interpreter will handle the difference based on op_tok.value
+        return res.success(ComparisonNode(op_tok, left, delimiter, right))
     
     def print_statement(self):
       
@@ -553,8 +553,8 @@ class Parser:
             res.register(self.advance())
             tok = self.current_tok
         
-        # Check for comparison operators first (before arithmetic)
-        if tok.value in ("BOTH SAEM", "DIFFRINT"):
+        # Check for comparison operators and operations (BOTH SAEM, DIFFRINT, BIGGR OF, SMALLR OF)
+        if tok.value in ("BOTH SAEM", "DIFFRINT") or tok.value in comparison_ops:
             return self.comparison_expr()
         
         # Check for arithmetic operations
