@@ -110,6 +110,8 @@ class BreakNode:
 class IdentifierNode:
     def __init__(self, tok):
         self.tok = tok
+        self.pos_start = self.tok.pos_start
+        self.pos_end = self.tok.pos_end
     
     def __repr__(self):
         return f'{self.tok}'
@@ -117,6 +119,8 @@ class IdentifierNode:
 class StringNode: 
     def __init__(self, tok):
         self.tok = tok
+        self.pos_start = self.tok.pos_start
+        self.pos_end = self.tok.pos_end
     
     def __repr__(self):
         return f'{self.tok}'
@@ -140,6 +144,17 @@ class VarDeclNode:
         if self.assignment_tok and self.value_node:
             return f'(I HAS A, {self.identifier_tok}, {self.assignment_tok}, {self.value_node})'
         return f'(I HAS A, {self.identifier_tok})'
+
+class ComparisonNode:
+    def __init__(self, op_tok, left_node, right_node):
+        self.op_tok = op_tok  # BOTH SAEM or DIFFRINT
+        self.left_node = left_node
+        self.right_node = right_node
+        self.pos_start = op_tok.pos_start
+        self.pos_end = right_node.pos_end
+    
+    def __repr__(self):
+        return f'({self.op_tok}, {self.left_node}, {self.right_node})'
 
 #################################
 # RESULT
@@ -346,6 +361,40 @@ class Parser:
         
         return res.success(start)
     
+    def comparison_expr(self):
+        res = ParserResult()
+        
+        # Check if it's a comparison operator
+        if self.current_tok.value not in ("BOTH SAEM", "DIFFRINT"):
+            return res.failure(InvalidSyntaxError(
+                self.current_tok.pos_start, 
+                self.current_tok.pos_end, 
+                "Expected 'BOTH SAEM' or 'DIFFRINT'"
+            ))
+        
+        op_tok = self.current_tok
+        res.register(self.advance())
+        
+        # Parse left expression (can be arithmetic, identifier, etc.)
+        left = res.register(self.expression())
+        if res.error: return res
+        
+        # Check for AN delimiter
+        if self.current_tok.type != TK_DELIMITER:
+            return res.failure(InvalidSyntaxError(
+                self.current_tok.pos_start,
+                self.current_tok.pos_end,
+                "Expected 'AN'"
+            ))
+        
+        res.register(self.advance())
+        
+        # Parse right expression
+        right = res.register(self.expression())
+        if res.error: return res
+        
+        return res.success(ComparisonNode(op_tok, left, right))
+    
     def print_statement(self):
       
         # format: VISIBLE <expression> [AN <expression>]*
@@ -495,7 +544,7 @@ class Parser:
 
     def expression(self):
         """
-        Parses any expression (literals, identifiers, arithmetic, etc.)
+        Parses any expression (literals, identifiers, arithmetic, comparisons, etc.)
         """
         res = ParserResult()
         tok = self.current_tok
@@ -504,6 +553,11 @@ class Parser:
             res.register(self.advance())
             tok = self.current_tok
         
+        # Check for comparison operators first (before arithmetic)
+        if tok.value in ("BOTH SAEM", "DIFFRINT"):
+            return self.comparison_expr()
+        
+        # Check for arithmetic operations
         if tok.value in arithmetic:
             return self.arithmetic_expr()
         
