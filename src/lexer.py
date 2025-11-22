@@ -109,7 +109,7 @@ class Lexer:
                 tokens.append(result)
                 self.advance()
             elif self.current_char == '+': # String concatenation operator
-                tokens.append(Token(TK_CONCAT, None))
+                tokens.append(Token(TK_CONCAT, '+'))
                 self.advance()
             elif self.current_char == '-': # String concatenation operator
                 pos_start = self.pos.copy()
@@ -245,10 +245,11 @@ class Lexer:
         if id_str == "OBTW":
             return Token(tok_type, None, pos_start, self.pos.copy())
         # Handle boolean literals WIN and FAIL
+        # Store the original string as value for display, boolean value can be accessed via token.value
         elif id_str == "WIN":
-            return Token(TK_BOOL, True, pos_start, self.pos.copy())
+            return Token(TK_BOOL, "WIN", pos_start, self.pos.copy())
         elif id_str == "FAIL":
-            return Token(TK_BOOL, False, pos_start, self.pos.copy())
+            return Token(TK_BOOL, "FAIL", pos_start, self.pos.copy())
         elif id_str in KEYWORDS.keys():
             return Token(tok_type, id_str, pos_start, self.pos.copy())
         
