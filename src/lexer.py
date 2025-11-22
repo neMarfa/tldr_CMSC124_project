@@ -242,15 +242,15 @@ class Lexer:
 
         tok_type = KEYWORDS.get(id_str, "varident")
 
-        if id_str in KEYWORDS.keys():
-            return Token(tok_type, id_str, pos_start, self.pos.copy())
+        if id_str == "OBTW":
+            return Token(tok_type, None, pos_start, self.pos.copy())
         # Handle boolean literals WIN and FAIL
         elif id_str == "WIN":
             return Token(TK_BOOL, True, pos_start, self.pos.copy())
         elif id_str == "FAIL":
             return Token(TK_BOOL, False, pos_start, self.pos.copy())
-        elif id_str == "OBTW":
-            return Token(tok_type, None, pos_start, self.pos.copy())
+        elif id_str in KEYWORDS.keys():
+            return Token(tok_type, id_str, pos_start, self.pos.copy())
         
         if ' ' in id_str:
             return None, ExpectedCharError(pos_start, self.pos.copy(), 'Incomplete Keyword Error ')
@@ -277,10 +277,8 @@ class Lexer:
     def skip_multi_line_comment(self):
         pos_start = self.pos.copy()
 
-        # skip whitespaces and new lines
-        while self.current_char != None and self.current_char in ' \t':
-            self.advance()
-        while self.current_char != None and self.current_char == '\n':
+        # Skip whitespaces and new lines after OBTW (if any)
+        while self.current_char != None and self.current_char in ' \t\n':
             self.advance()
 
         # look for end of comment ==> TLDR
@@ -292,21 +290,28 @@ class Lexer:
                 # try try to read TLDR
                 temp_str = 'T'  # Start with 'T' 
                 self.advance()  # Move past 'T'
+                
+                # Read the rest of the word (LDR) - only letters
                 while self.current_char != None and self.current_char in LETTERS:
                     temp_str += self.current_char
                     self.advance()
 
+                # Check if TLDR
                 if temp_str == 'TLDR':
                     # end the multi-line comment, skip all na nasa line ng TLDR
                     while self.current_char != None and self.current_char != '\n':
                         self.advance()
-                    return None
+                    # Skip the newline after TLDR (if present)
+                    if self.current_char == '\n':
+                        self.advance()
+                    return None  # Successfully skipped comment
                 else:
                     # if the curr word na nir-read ay not TLDR
                     self.pos = saved_pos
                     self.current_char = self.text[self.pos.idx] if self.pos.idx < len(self.text) else None
                     self.advance()
             else:
+                # Skip any character 
                 self.advance()
         
         # If end of file reached without finding TLDR, return error
