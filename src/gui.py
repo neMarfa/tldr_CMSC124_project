@@ -222,7 +222,7 @@ class LOLCodeGUI:
         # display parse tree
         self.write_to_console(f"Parse Tree: {parse_result.node}\n")
 
-        # ========== new code: run semantic analyzer (interpreter) ==========
+        # ========== run semantic analyzer (interpreter) ==========
         self.write_to_console("\n" + "=" * 50 + "\n")
         self.write_to_console("SEMANTIC ANALYZER & EXECUTION:\n")
         self.write_to_console("=" * 50 + "\n")
@@ -237,18 +237,22 @@ class LOLCodeGUI:
             
             # update symbol table display from interpreter
             self.write_to_console("\nUpdating Symbol Table...\n")
+            
+            # clear the symbol table tree once
+            for item in self.symbol_tree.get_children():
+                self.symbol_tree.delete(item)
+            
+            # add all variables from interpreter at once
             for var_name, var_value in interpreter.symbol_table.items():
                 # get the actual value from the value object
                 display_value = var_value.value if hasattr(var_value, 'value') else str(var_value)
-                self.update_symbol_table(var_name, display_value)
+                self.symbol_table[var_name] = display_value  # update internal dict
+                self.symbol_tree.insert("", tk.END, values=(var_name, display_value))  # add to tree
                 
         except Exception as e:
             self.write_to_console(f"RUNTIME ERROR: {str(e)}\n")
             return
-        # ========== end of new code ==========
-        
-        # extract variables from parse tree for symbol table
-        # self.extract_variables_from_tree(parse_result.node)  
+        # ========== end of semantic analyzer ==========
         
         self.write_to_console("\n" + "=" * 50 + "\n")
         self.write_to_console("Execution completed!\n")

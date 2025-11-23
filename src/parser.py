@@ -260,37 +260,40 @@ class Parser:
         res.register(self.advance())
 
         # checks immediately if the last character is the end of program
-        # TODO: will change this in the future so that NEWLINES will be taken into account
         if final_tok.value != "KTHXBYE":
             return res.failure(InvalidSyntaxError(final_tok.pos_start, final_tok.pos_end, "Expected 'KTHXBYE' "))
         
-        # Checks if there is a newline between HAI and KTHXBYE
+        # skip initial newlines
         while self.current_tok.type == TK_NEWLINE:
             res.register(self.advance())
 
-        # WARN: as of now this only accepts arithmetic values ==> added for printing & var dec
+        # parse statements until we hit KTHXBYE
         while self.current_tok.value != "KTHXBYE":
-            
             err = self.statement_section(statements)
             if err != None: return err
             
             if self.current_tok.value == "KTHXBYE":
                 break
             
-            res.register(self.advance())
+            # skip newlines between statements
+            while self.current_tok.type == TK_NEWLINE:
+                res.register(self.advance())
+                if self.current_tok.value == "KTHXBYE":
+                    break
 
-        # for testing interpreter
-        # return res.success(ListNode(statements, pos_start, self.current_tok.pos_start.copy()))
-
-        # for testing syntax tree
         return res.success(statements)
 
     # PLACE ALL THE STATEMENTS HERE, WILL BE REUSED IN FUNCTIONS AND LOOPS
     def statement_section(self, statements):
         res = ParserResult()
 
-        if self.current_tok.type == TK_NEWLINE:
+        # skip any leading newlines
+        while self.current_tok.type == TK_NEWLINE:
             res.register(self.advance())
+        
+        # check if we've reached the end
+        if self.current_tok.value == "KTHXBYE":
+            return None
 
         if self.current_tok.type == "Output Keyword":
             print_stmt = self.print_statement()
@@ -306,7 +309,6 @@ class Parser:
             arith = self.arithmetic_expr()
             if arith.error: return arith
             statements.append(arith.node)
-            ret = arith
 
         elif self.current_tok.value == "IM IN YR":
             loop = self.loop()
@@ -319,7 +321,7 @@ class Parser:
             statements.append(typecast.node)
 
         elif self.current_tok.type == "varident":
-        # try to extend and see if it's assignment (R) or typecast (IS NOW A)
+            # try to extend and see if it's assignment (R) or typecast (IS NOW A)
             next_idx = self.tok_idx + 1
             if next_idx < len(self.tokens):
                 next_tok = self.tokens[next_idx]
@@ -339,6 +341,7 @@ class Parser:
                     res.register(self.advance())
 
         return None
+    # ========== END OF REPLACED METHODS ==========
 
 
     def delimiter_values(self):
@@ -355,7 +358,6 @@ class Parser:
     def arithmetic_values(self):
         res = ParserResult()
         tok = self.current_tok
-        print(tok.type)
         if tok.type in (TK_INT, TK_FLOAT, "varident"):
             res.register(self.advance())
             return res.success(NumberNode(tok))
@@ -655,7 +657,6 @@ class Parser:
         res = ParserResult()
 
         start = self.loop_declaration()
-        print(start.node)
         if start.error: return start
 
         statements = []
