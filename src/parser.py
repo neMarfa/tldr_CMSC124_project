@@ -313,6 +313,31 @@ class Parser:
             if loop.error: return loop
             statements.append(loop.node)
         
+        elif self.current_tok.value == "MAEK":
+            typecast = self.typecast_maek()
+            if typecast.error: return typecast
+            statements.append(typecast.node)
+
+        elif self.current_tok.type == "varident":
+        # try to extend and see if it's assignment (R) or typecast (IS NOW A)
+            next_idx = self.tok_idx + 1
+            if next_idx < len(self.tokens):
+                next_tok = self.tokens[next_idx]
+                
+                if next_tok.value == "R":
+                    # assignment
+                    assign = self.assignment()
+                    if assign.error: return assign
+                    statements.append(assign.node)
+                elif next_tok.value == "IS NOW A":
+                    # typecast
+                    typecast = self.typecast_is_now_a()
+                    if typecast.error: return typecast
+                    statements.append(typecast.node)
+                else:
+                    # just a variable reference (skip for now)
+                    res.register(self.advance())
+
         return None
 
 
@@ -511,15 +536,15 @@ class Parser:
 
     def typecast_is_now_a(self):
         res = ParserResult()
-        is_now_tok = self.current_tok
+        var_tok = self.current_tok  # ← Rename to var_tok
 
-        if is_now_tok.type != "varident":
-             return res.failure(InvalidSyntaxError(is_now_a_tok.pos_start, is_now_a_tok.pos_end, "Expected variable identifier"))
-    
+        if var_tok.type != "varident":
+            return res.failure(InvalidSyntaxError(var_tok.pos_start, var_tok.pos_end, "Expected variable identifier"))
+        
         res.register(self.advance())
         
         # expect IS NOW A
-        is_now_a_tok = self.current_tok
+        is_now_a_tok = self.current_tok  # ← Keep this name
         if is_now_a_tok.value != "IS NOW A":
             return res.failure(InvalidSyntaxError(is_now_a_tok.pos_start, is_now_a_tok.pos_end, "Expected 'IS NOW A'"))
         
@@ -532,9 +557,30 @@ class Parser:
         
         res.register(self.advance())
         
-        return res.success(VarTypeCastNode(is_now_tok, is_now_a_tok, type_tok))
+        return res.success(VarTypeCastNode(var_tok, is_now_a_tok, type_tok))
 
-            
+    def assignment(self):
+        res = ParserResult()
+        tok = self.current_tok
+
+        if tok.type != "varident":
+            return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected variable identifier"))
+        
+        res.register(self.advance())
+    
+        # expect R
+        r_tok = self.current_tok
+        if r_tok.value != "R":
+            return res.failure(InvalidSyntaxError(r_tok.pos_start, r_tok.pos_end, "Expected 'R'"))
+        
+        res.register(self.advance())
+        
+        # parse value expression
+        value = res.register(self.expression())
+        if res.error: return res
+        
+        return res.success(AssignmentNode(tok, r_tok, value))
+
 # used for the loop_declaration part
 # TODO: ADD CONDITIONAL OPERATORS
     def loop_declaration(self):
@@ -639,6 +685,9 @@ class Parser:
         if tok.type == TK_STRING_DELIMITER:
             res.register(self.advance())
             tok = self.current_tok
+
+        if tok.value == "MAEK":
+            return self.typecast_maek()
         
         # Check for comparison operators and operations (BOTH SAEM, DIFFRINT, BIGGR OF, SMALLR OF)
         if tok.value in ("BOTH SAEM", "DIFFRINT") or tok.value in comparison_ops:
