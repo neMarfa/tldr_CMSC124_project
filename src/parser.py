@@ -508,6 +508,32 @@ class Parser:
         res.register(self.advance())
         
         return res.success(TypeCastNode(maek_tok, expr, type_tok))
+
+    def typecast_is_now_a(self):
+        res = ParserResult()
+        is_now_tok = self.current_tok
+
+        if is_now_tok.type != "varident":
+             return res.failure(InvalidSyntaxError(is_now_a_tok.pos_start, is_now_a_tok.pos_end, "Expected variable identifier"))
+    
+        res.register(self.advance())
+        
+        # expect IS NOW A
+        is_now_a_tok = self.current_tok
+        if is_now_a_tok.value != "IS NOW A":
+            return res.failure(InvalidSyntaxError(is_now_a_tok.pos_start, is_now_a_tok.pos_end, "Expected 'IS NOW A'"))
+        
+        res.register(self.advance())
+        
+        # expect type
+        type_tok = self.current_tok
+        if type_tok.value not in ("NUMBR", "NUMBAR", "YARN", "TROOF", "NOOB"):
+            return res.failure(InvalidSyntaxError(type_tok.pos_start, type_tok.pos_end, "Expected type (NUMBR, NUMBAR, YARN, TROOF, NOOB)"))
+        
+        res.register(self.advance())
+        
+        return res.success(VarTypeCastNode(is_now_tok, is_now_a_tok, type_tok))
+
             
 # used for the loop_declaration part
 # TODO: ADD CONDITIONAL OPERATORS
