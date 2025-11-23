@@ -221,12 +221,37 @@ class LOLCodeGUI:
         
         # display parse tree
         self.write_to_console(f"Parse Tree: {parse_result.node}\n")
+
+        # ========== new code: run semantic analyzer (interpreter) ==========
+        self.write_to_console("\n" + "=" * 50 + "\n")
+        self.write_to_console("SEMANTIC ANALYZER & EXECUTION:\n")
+        self.write_to_console("=" * 50 + "\n")
+        
+        from interpreter import Interpreter
+        interpreter = Interpreter()
+        
+        try:
+            # execute each statement
+            for stmt in parse_result.node:
+                interpreter.visit(stmt)
+            
+            # update symbol table display from interpreter
+            self.write_to_console("\nUpdating Symbol Table...\n")
+            for var_name, var_value in interpreter.symbol_table.items():
+                # get the actual value from the value object
+                display_value = var_value.value if hasattr(var_value, 'value') else str(var_value)
+                self.update_symbol_table(var_name, display_value)
+                
+        except Exception as e:
+            self.write_to_console(f"RUNTIME ERROR: {str(e)}\n")
+            return
+        # ========== end of new code ==========
         
         # extract variables from parse tree for symbol table
-        self.extract_variables_from_tree(parse_result.node)
+        # self.extract_variables_from_tree(parse_result.node)  
         
         self.write_to_console("\n" + "=" * 50 + "\n")
-        self.write_to_console("Syntax analysis completed!\n")
+        self.write_to_console("Execution completed!\n")
     #------------------------------------------------------------------------------------------------------------
     def update_lexeme_table(self, tokens):
         for token in tokens:

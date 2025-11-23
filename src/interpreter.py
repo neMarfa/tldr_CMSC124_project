@@ -3,6 +3,9 @@ from values import *
 
 
 class Interpreter:
+    def __init__(self):
+        self.symbol_table = {}
+
     # gagawa ng function based sa type na provided
     def visit(self, node):
         method_name = f'visit_{type(node).__name__}'
@@ -49,3 +52,108 @@ class Interpreter:
         
         print(result.value)
         return result.set_pos(node.pos_start, node.pos_end)
+    
+    def visit_StringNode(self, node):
+        return StringOps(node.tok.value).set_pos(node.pos_start, node.pos_end)
+    
+    def visit_IdentifierNode(self, node):
+        var_name = node.tok.value
+        if var_name not in self.symbol_table:
+            raise Exception(f"Variable '{var_name}' is not defined.")
+        return self.symbol_table[var_name]
+    
+    def visit_VarDeclNode(self, node):
+        var_name = node.identifier_tok.value
+        if node.value_node:
+            value = self.visit(node.value_node)
+        else:
+            value = NoobOps()     # basically null siya
+            print("Uninitialized")
+        self.symbol_table[var_name] = value
+        print(f"Declared var: {var_name}\nValue: {value}")  # for checking
+
+        return value
+
+    def visit_AssignmentNode(self, node):
+        var_name = node.var_tok.value
+        if var_name not in self.symbol_table:
+            raise Exception(f"Cannot assign to undeclared variable '{var_name}'")
+        
+        value = self.visit(node.value_node)
+        self.symbol_table[var_name] = value
+        return value
+    
+    # handles typecast for MAEK
+    def visit_TypeCastNode(self, node):
+         value = self.visit(node.expr_node)
+         desired_type = node.type_tok.value
+
+         result = self.cast_value(value, desired_type)
+         return result
+    
+    # handles typecast IS NOW A
+    def visit_VarTypeCastNode(self, node):
+        var_name = node.var_tok.value
+        if var_name not in self.symbol_table:
+            raise Exception(f"Cannot cast undeclared variable '{var_name}'")
+        
+        value = self.symbol_table[var_name]
+        desired_type = node.type_tok.value
+
+        result = self.cast_value(value, desired_type)
+        self.symbol_table[var_name] = result
+        
+        return result
+    
+    def visit_PrintNode(self, node):
+        output = []
+        
+        # eval each expression
+        for expr in node.expressions:
+            value = self.visit(expr)
+            output.append(str(value.value))
+        
+        # print with space separator
+        result = " ".join(output)
+        print(result)
+        
+        return StringOps(result)
+
+    def cast_value(self, value, target_type):
+        if target_type == "NUMBR":
+            # cast to integer
+            if isinstance(value, NumOps):
+                return NumOps(int(value.value))
+            elif isinstance(value, StringOps):
+                try:
+                    return NumOps(int(value.value))
+                except ValueError:
+                    return NumOps(0)  # Default to 0 if conversion fails
+            elif isinstance(value, NoobOps):
+                return NumOps(0)
+        
+        elif target_type == "NUMBAR":
+            # cast to float
+            if isinstance(value, NumOps):
+                return NumOps(float(value.value))
+            elif isinstance(value, StringOps):
+                try:
+                    return NumOps(float(value.value))
+                except ValueError:
+                    return NumOps(0.0)
+            elif isinstance(value, NoobOps):
+                return NumOps(0.0)
+        
+        elif target_type == "YARN":
+            # cast to string
+            return StringOps(str(value.value))
+        
+        # TODO: for boolean
+        # elif target_type == "TROOF":
+        #     # cast to boolean
+        
+        elif target_type == "NOOB":
+            # cast to null
+            return NoobOps()
+        
+        return value

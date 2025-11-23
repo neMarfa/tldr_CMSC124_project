@@ -19,7 +19,7 @@ class NumberNode:
         self.pos_end = self.tok.pos_end
     
     def __repr__(self):
-        return f'{self.tok}'
+        return f'{self.tok.type}:{self.tok}'
 
 # WILL HOLD ALL THE STATEMENTS
 class ListNode:
@@ -126,7 +126,7 @@ class StringNode:
         self.pos_end = self.tok.pos_end
     
     def __repr__(self):
-        return f'{self.tok}'
+        return f'YARN:{self.tok}'
     
 class PrintNode: 
     def __init__(self, keyword_tok, expressions):
@@ -536,7 +536,7 @@ class Parser:
 
     def typecast_is_now_a(self):
         res = ParserResult()
-        var_tok = self.current_tok  # ← Rename to var_tok
+        var_tok = self.current_tok  
 
         if var_tok.type != "varident":
             return res.failure(InvalidSyntaxError(var_tok.pos_start, var_tok.pos_end, "Expected variable identifier"))
@@ -544,7 +544,7 @@ class Parser:
         res.register(self.advance())
         
         # expect IS NOW A
-        is_now_a_tok = self.current_tok  # ← Keep this name
+        is_now_a_tok = self.current_tok  
         if is_now_a_tok.value != "IS NOW A":
             return res.failure(InvalidSyntaxError(is_now_a_tok.pos_start, is_now_a_tok.pos_end, "Expected 'IS NOW A'"))
         
