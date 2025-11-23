@@ -160,6 +160,39 @@ class ComparisonNode:
     def __repr__(self):
         return f'({self.op_tok}, {self.left_node}, {self.separator_node}, {self.right_node})'
 
+class TypeCastNode:
+    def __init__(self, maek_tok, expr_node, type_tok):
+        self.maek_tok = maek_tok
+        self.expr_node = expr_node
+        self.type_tok = type_tok
+        self.pos_start = maek_tok.pos_start
+        self.pos_end = type_tok.pos_end
+    
+    def __repr__(self):
+        return f'(MAEK, {self.expr_node}, A, {self.type_tok})'
+    
+class VarTypeCastNode:
+    def __init__(self, var_tok, is_now_a_tok, type_tok):
+        self.var_tok = var_tok
+        self.is_now_a_tok = is_now_a_tok
+        self.type_tok = type_tok
+        self.pos_start = var_tok.pos_start
+        self.pos_end = type_tok.pos_end
+    
+    def __repr__(self):
+        return f'({self.var_tok}, IS NOW A, {self.type_tok})'
+    
+class AssignmentNode:
+    def __init__(self, var_tok, r_tok, value_node):
+        self.var_tok = var_tok
+        self.r_tok = r_tok
+        self.value_node = value_node
+        self.pos_start = var_tok.pos_start
+        self.pos_end = value_node.pos_end
+    
+    def __repr__(self):
+        return f'({self.var_tok}, R, {self.value_node})'
+    
 #################################
 # RESULT
 #################################
@@ -447,7 +480,35 @@ class Parser:
             return res.success(VarDeclNode(tok, identifier_tok, assignment_tok, value))
         
         return res.success(VarDeclNode(tok, identifier_tok))
+    
+    def typecast_maek(self):
+        res = ParserResult()
+        maek_tok = self.current_tok
 
+        if maek_tok.value != "MAEK":
+            return res.failure(InvalidSyntaxError(maek_tok.pos_start, maek_tok.pos_end, "Expected 'MAEK'"))
+    
+        res.register(self.advance())
+        
+        # parse the expression to cast
+        expr = res.register(self.expression())
+        if res.error: return res
+        
+        # expect A
+        if self.current_tok.value != "A":
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'A'"))
+        
+        res.register(self.advance())
+        
+        # expect type (NUMBR, NUMBAR, YARN, TROOF, NOOB)
+        type_tok = self.current_tok
+        if type_tok.value not in ("NUMBR", "NUMBAR", "YARN", "TROOF", "NOOB"):
+            return res.failure(InvalidSyntaxError(type_tok.pos_start, type_tok.pos_end, "Expected type (NUMBR, NUMBAR, YARN, TROOF, NOOB)"))
+        
+        res.register(self.advance())
+        
+        return res.success(TypeCastNode(maek_tok, expr, type_tok))
+            
 # used for the loop_declaration part
 # TODO: ADD CONDITIONAL OPERATORS
     def loop_declaration(self):
