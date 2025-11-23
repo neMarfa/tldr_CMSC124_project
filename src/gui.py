@@ -211,7 +211,7 @@ class LOLCodeGUI:
         self.update_lexeme_table(tokens)
         
         # run parser (syntax analyzer)
-        self.write_to_console("\nSYNTAX ANALYZER:\n")
+        # self.write_to_console("\nSYNTAX ANALYZER:\n")
         p = parser.Parser(tokens)
         parse_result = p.parse()
         
@@ -220,15 +220,12 @@ class LOLCodeGUI:
             return
         
         # display parse tree
-        self.write_to_console(f"Parse Tree: {parse_result.node}\n")
+        # self.write_to_console(f"Parse Tree: {parse_result.node}\n")       # uncomment for checking
 
         # ========== run semantic analyzer (interpreter) ==========
-        self.write_to_console("\n" + "=" * 50 + "\n")
-        self.write_to_console("SEMANTIC ANALYZER & EXECUTION:\n")
-        self.write_to_console("=" * 50 + "\n")
         
         from interpreter import Interpreter
-        interpreter = Interpreter()
+        interpreter = Interpreter(console_writer=self.write_to_console)
         
         try:
             # execute each statement
@@ -236,7 +233,7 @@ class LOLCodeGUI:
                 interpreter.visit(stmt)
             
             # update symbol table display from interpreter
-            self.write_to_console("\nUpdating Symbol Table...\n")
+            # self.write_to_console("\nUpdating Symbol Table...\n")
             
             # clear the symbol table tree once
             for item in self.symbol_tree.get_children():

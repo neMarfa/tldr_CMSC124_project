@@ -3,8 +3,9 @@ from values import *
 
 
 class Interpreter:
-    def __init__(self):
+    def __init__(self, console_writer = None):
         self.symbol_table = {}
+        self.console_writer = console_writer
 
     # gagawa ng function based sa type na provided
     def visit(self, node):
@@ -113,9 +114,13 @@ class Interpreter:
             value = self.visit(expr)
             output.append(str(value.value))
         
-        # print with space separator
+        # print spaces bet
         result = " ".join(output)
-        print(result)
+        
+        if self.console_writer:
+            self.console_writer(result + "\n")  # gui console
+        else:
+            print(result)  
         
         return StringOps(result)
 
