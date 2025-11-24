@@ -31,6 +31,8 @@ class ListNode:
 class KeywordNode:
     def __init__(self, tok):
         self.tok = tok
+        self.pos_start = tok.pos_start
+        self.pos_end = tok.pos_end  
 
     def __repr__(self):
         return f'{self.tok}'
@@ -193,6 +195,35 @@ class AssignmentNode:
     def __repr__(self):
         return f'({self.var_tok}, R, {self.value_node})'
     
+class SwitchCaseNode:
+    def __init__(self, start, statements, end):
+        self.start = start
+        self.statements = statements
+        self.end = end
+        self.pos_start = start.pos_start
+        self.pos_end = end.pos_end
+    
+    def __repr__(self):
+        return f'({self.start}, {self.statements}, {self.end})'
+
+class SwitchOMGNode:
+    def __init__(self, start, expression, code):
+        self.start = start
+        self.expression = expression
+        self.code = code
+        self.pos_start = start.pos_start
+
+    def __repr__(self):
+        return f'({self.start}, {self.expression}, {self.code})'
+
+class SwitchOMGWTFNode:
+    def __init__(self, start, code):
+        self.start = start
+        self.code = code
+        self.pos_start = start.pos_start
+    def __repr__(self):
+        return f'({self.start}, {self.code})'
+
 #################################
 # RESULT
 #################################
@@ -227,12 +258,14 @@ class Parser:
         self.tokens = tokens
         self.tok_idx = 0 #index
         self.current_tok = self.tokens[0]
+        self.previous_tok = self.tokens[0]
     
     # MOVING TO NEXT INDEX
     def advance(self):
         self.tok_idx += 1
         if self.tok_idx < len(self.tokens):
             self.current_tok = self.tokens[self.tok_idx]
+            self.previous_tok = self.tokens[self.tok_idx-1]
         return self.current_tok
 
 
@@ -273,6 +306,8 @@ class Parser:
             if err != None: return err
             
             if self.current_tok.value == "KTHXBYE":
+                if self.previous_tok.type != TK_NEWLINE:
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
                 break
             
             # skip newlines between statements
@@ -339,6 +374,12 @@ class Parser:
                 else:
                     # just a variable reference (skip for now)
                     res.register(self.advance())
+
+        elif self.current_tok.value == "WTF?":
+            switch = self.switch_case()
+            if switch.error: return switch
+            statements.append(switch.node)
+            
 
         return None
     # ========== END OF REPLACED METHODS ==========
@@ -655,19 +696,26 @@ class Parser:
     # responsible for the loop
     def loop(self):
         res = ParserResult()
-
         start = self.loop_declaration()
         if start.error: return start
+        
+        if self.current_tok.type != TK_NEWLINE:
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
 
         statements = []
 
         while self.current_tok.value != "IM OUTTA YR":
-
+            
             err = self.statement_section(statements)
             if err != None: return err
 
             if self.current_tok.value == "IM OUTTA YR":
+                if self.previous_tok.type != TK_NEWLINE:
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
                 break
+
+            if self.current_tok.value == "KTHXBYE":
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Loop Delimiter 'IM OUTTA YR' " ))
         
             res.register(self.advance())
 
@@ -713,3 +761,100 @@ class Parser:
             return res.success(IdentifierNode(tok))
         
         return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected expression"))
+
+
+    def switch_keywords(self, statements):
+        res = ParserResult()
+        inner_code = []
+
+        while self.current_tok.type == TK_NEWLINE:
+            print("pasok")
+            res.register(self.advance())
+
+
+        if self.current_tok.value == "OMG":
+            start = self.current_tok
+            res.register(self.advance())
+
+            expression = self.current_tok
+
+            if expression.type not in [TK_BOOL, TK_FLOAT, TK_INT, TK_STRING]:
+                return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected 'NUMBR', 'NUMBAR', 'YARN', or 'TROOF'"))
+
+            while self.current_tok.value != "OMG" or self.current_tok.value != "OMGWTF" or self.current_tok.value != "OIC":
+                res.register(self.advance())
+
+                err = self.statement_section(inner_code)
+                if err != None: return err
+
+
+                if self.current_tok.value == "OMG":
+                    break
+                if self.current_tok.value == "OMGWTF":
+                    break
+                if self.current_tok.value == "OIC":
+                    break  
+                if self.current_tok.value == "KTHXBYE":
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected WTF? Delimiter 'OIC' " ))  
+
+            statements.append(SwitchOMGNode(start, expression, inner_code.copy())) 
+            return None
+
+        if self.current_tok.value == "OMGWTF":
+            start = self.current_tok
+            res.register(self.advance())
+            
+            if self.current_tok.type != TK_NEWLINE:
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
+            
+
+            while self.current_tok.value != "OIC":
+                res.register(self.advance())
+
+                err = self.statement_section(inner_code)
+                if err != None: return err
+                
+                if self.current_tok.value == "OMG":
+                    return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected 'OIC' "))
+                if self.current_tok.value == "OMGWTF":
+                    return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected 'OIC' "))
+                if self.current_tok.value == "OIC":
+                    break  
+                if self.current_tok.value == "KTHXBYE":
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected WTF? Delimiter 'OIC' " ))  
+
+            statements.append(SwitchOMGWTFNode(start, inner_code.copy())) 
+            return None
+
+        
+        return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'OMG' " ))
+
+
+    def switch_case(self):
+        res = ParserResult()
+        start = self.current_tok
+        res.register(self.advance())
+
+        if self.current_tok.type != TK_NEWLINE:
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
+
+        statements = []
+        res.register(self.advance())
+
+        while self.current_tok.value != "OIC":
+
+            err = self.switch_keywords(statements)
+            if err != None: return err
+
+            if self.current_tok.value == "OIC":
+                if self.previous_tok.type != TK_NEWLINE:
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
+                break
+
+            if self.current_tok.value == "KTHXBYE":
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected WTF? Delimiter 'OIC' " ))
+        
+        end = self.current_tok
+
+        return res.success(SwitchCaseNode(start, statements, end))
+
