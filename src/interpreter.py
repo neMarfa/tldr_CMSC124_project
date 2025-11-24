@@ -18,6 +18,11 @@ class Interpreter:
 
     def visit_NumberNode(self, node):
         return NumOps(node.tok.value).set_pos(node.pos_start, node.pos_end)
+
+    def visit_BoolNode(self, node):
+        # Convert WIN -> True, FAIL -> False
+        bool_value = (node.tok.value == "WIN")
+        return BoolOps(bool_value).set_pos(node.pos_start, node.pos_end)
     
     def visit_ListNode(self, node):
         res = ParserResult()
@@ -153,12 +158,82 @@ class Interpreter:
             # cast to string
             return StringOps(str(value.value))
         
-        # TODO: for boolean
-        # elif target_type == "TROOF":
-        #     # cast to boolean
-        
+        elif target_type == "TROOF":
+            # cast to boolean
+            if isinstance(value, NumOps):
+                # Numbers: 0 = FAIL, non-zero = WIN
+                return BoolOps(value.value != 0)
+            elif isinstance(value, StringOps):
+                # Strings: empty = FAIL, non-empty = WIN
+                return BoolOps(len(value.value.strip()) > 0)
+            elif isinstance(value, BoolOps):
+                return value  # already boolean
+            elif isinstance(value, NoobOps):
+                return BoolOps(False)  # NOOB = FAIL
+            return BoolOps(True)  # default to WIN for unknown types
+
         elif target_type == "NOOB":
             # cast to null
             return NoobOps()
-        
+
         return value
+
+    # If the operands are not TROOFs, they should be implicitly typecast
+    def to_bool(self, value):
+        if isinstance(value, BoolOps):
+            return value.value
+        elif isinstance(value, NumOps):
+            return value.value != 0
+        elif isinstance(value, StringOps):
+            return len(value.value.strip()) > 0
+        elif isinstance(value, NoobOps):
+            return False
+        return bool(value)  # fallback
+
+    def visit_BooleanNode(self, node):
+        op_type = node.op_tok.value
+
+        if op_type == "NOT":
+            # NOT operation
+            operand = self.visit(node.left_node)
+            bool_value = self.to_bool(operand)
+            result = BoolOps(not bool_value)
+        else:
+            # Binary operations
+            left = self.visit(node.left_node)
+            right = self.visit(node.right_node)
+
+            left_bool = self.to_bool(left)
+            right_bool = self.to_bool(right)
+
+            if op_type == "BOTH OF":
+                result = BoolOps(left_bool and right_bool)  # AND
+            elif op_type == "EITHER OF":
+                result = BoolOps(left_bool or right_bool)   # OR
+            elif op_type == "WON OF":
+                result = BoolOps(left_bool ^ right_bool)    # XOR
+            else:
+                raise Exception(f"Unknown boolean operation: {op_type}")
+
+        return result.set_pos(node.pos_start, node.pos_end)
+
+    def visit_BooleanInfiniteNode(self, node):
+        op_type = node.op_tok.value
+
+        # Evaluate all operands to boolean values
+        bool_operands = []
+        for operand_node in node.operands:
+            operand = self.visit(operand_node)
+            bool_operands.append(self.to_bool(operand))
+
+        if op_type == "ALL OF":
+            # ALL OF = AND all operands
+            result = all(bool_operands)
+        elif op_type == "ANY OF":
+            # ANY OF = OR all operands
+            result = any(bool_operands)
+        else:
+            raise Exception(f"Unknown infinite boolean operation: {op_type}")
+
+        bool_result = BoolOps(result)
+        return bool_result.set_pos(node.pos_start, node.pos_end)

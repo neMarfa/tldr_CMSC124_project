@@ -17,9 +17,18 @@ class NumberNode:
         self.tok = tok
         self.pos_start = self.tok.pos_start
         self.pos_end = self.tok.pos_end
-    
+
     def __repr__(self):
         return f'{self.tok.type}:{self.tok}'
+
+class BoolNode:
+    def __init__(self, tok):
+        self.tok = tok
+        self.pos_start = self.tok.pos_start
+        self.pos_end = self.tok.pos_end
+
+    def __repr__(self):
+        return f'{self.tok}'
 
 # WILL HOLD ALL THE STATEMENTS
 class ListNode:
@@ -223,6 +232,30 @@ class SwitchOMGWTFNode:
         self.pos_start = start.pos_start
     def __repr__(self):
         return f'({self.start}, {self.code})'
+
+class BooleanNode:
+    def __init__(self, op_tok, left_node, right_node=None):
+        self.op_tok = op_tok
+        self.left_node = left_node
+        self.right_node = right_node  # None for NOT operation
+        self.pos_start = op_tok.pos_start
+        self.pos_end = (right_node.pos_end if right_node else left_node.pos_end)
+
+    def __repr__(self):
+        if self.right_node:
+            return f'({self.op_tok}, {self.left_node}, {self.right_node})'
+        return f'({self.op_tok}, {self.left_node})'
+
+class BooleanInfiniteNode:
+    def __init__(self, op_tok, operands, end_tok):
+        self.op_tok = op_tok  # ALL OF or ANY OF
+        self.operands = operands  # List of expressions
+        self.end_tok = end_tok  # MKAY token
+        self.pos_start = op_tok.pos_start
+        self.pos_end = end_tok.pos_end
+
+    def __repr__(self):
+        return f'({self.op_tok}, {self.operands})'
 
 #################################
 # RESULT
@@ -492,10 +525,84 @@ class Parser:
         right = res.register(self.expression())
         if res.error: return res
         
-        # All comparison operations use the same node type
-        # The interpreter will handle the difference based on op_tok.value
         return res.success(ComparisonNode(op_tok, left, delimiter, right))
-    
+
+    def boolean_expr(self):
+        res = ParserResult()
+
+        # Handle NOT 
+        if self.current_tok.value == "NOT":
+            op_tok = self.current_tok
+            res.register(self.advance())
+
+            operand = res.register(self.expression())
+            if res.error: return res
+
+            return res.success(BooleanNode(op_tok, operand))
+
+        # Handle infinite arity operators (ALL OF, ANY OF)
+        if self.current_tok.value in ("ALL OF", "ANY OF"):
+            op_tok = self.current_tok
+            res.register(self.advance())
+
+            operands = []
+
+            # Parse first operand
+            expr = res.register(self.expression())
+            if res.error: return res
+            operands.append(expr)
+
+            # Parse additional operands separated by AN
+            while self.current_tok.type == TK_DELIMITER:
+                res.register(self.advance())  # Skip AN
+                expr = res.register(self.expression())
+                if res.error: return res
+                operands.append(expr)
+
+            # Check for MKAY terminator
+            if self.current_tok.value != "MKAY":
+                return res.failure(InvalidSyntaxError(
+                    self.current_tok.pos_start,
+                    self.current_tok.pos_end,
+                    "Expected 'MKAY'"
+                ))
+
+            end_tok = self.current_tok
+            res.register(self.advance())
+
+            return res.success(BooleanInfiniteNode(op_tok, operands, end_tok))
+
+        # Handle binary boolean operators (BOTH OF, EITHER OF, WON OF)
+        if self.current_tok.value in ("BOTH OF", "EITHER OF", "WON OF"):
+            op_tok = self.current_tok
+            res.register(self.advance())
+
+            # Parse left operand
+            left = res.register(self.expression())
+            if res.error: return res
+
+            # Check for AN delimiter
+            if self.current_tok.type != TK_DELIMITER:
+                return res.failure(InvalidSyntaxError(
+                    self.current_tok.pos_start,
+                    self.current_tok.pos_end,
+                    "Expected 'AN'"
+                ))
+
+            res.register(self.advance())
+
+            # Parse right operand
+            right = res.register(self.expression())
+            if res.error: return res
+
+            return res.success(BooleanNode(op_tok, left, right))
+
+        return res.failure(InvalidSyntaxError(
+            self.current_tok.pos_start,
+            self.current_tok.pos_end,
+            "Expected boolean operator"
+        ))
+
     def print_statement(self):
       
         # format: VISIBLE <expression> [AN <expression>]*
@@ -726,19 +833,23 @@ class Parser:
 
     def expression(self):
         """
-        Parses any expression (literals, identifiers, arithmetic, comparisons, etc.)
+        Parses any expression (literals, identifiers, arithmetic, comparisons, booleans, etc.)
         """
         res = ParserResult()
         tok = self.current_tok
-        
+
         if tok.type == TK_STRING_DELIMITER:
             res.register(self.advance())
             tok = self.current_tok
 
         if tok.value == "MAEK":
             return self.typecast_maek()
-        
-        # Check for comparison operators and operations (BOTH SAEM, DIFFRINT, BIGGR OF, SMALLR OF)
+
+        # Check for boolean operators first (highest precedence)
+        if tok.value in ("NOT", "ALL OF", "ANY OF", "BOTH OF", "EITHER OF", "WON OF"):
+            return self.boolean_expr()
+
+        # Check for comparison operators and operations
         if tok.value in ("BOTH SAEM", "DIFFRINT") or tok.value in comparison_ops:
             return self.comparison_expr()
         
@@ -749,13 +860,17 @@ class Parser:
         if tok.type in (TK_INT, TK_FLOAT):
             res.register(self.advance())
             return res.success(NumberNode(tok))
-        
+
         if tok.type == TK_STRING:
             res.register(self.advance())
             if self.current_tok and self.current_tok.type == TK_STRING_DELIMITER:
                 res.register(self.advance())
             return res.success(StringNode(tok))
-        
+
+        if tok.type == TK_BOOL:
+            res.register(self.advance())
+            return res.success(BoolNode(tok))  # WIN -> true, FAIL -> false
+
         if tok.type == "varident":
             res.register(self.advance())
             return res.success(IdentifierNode(tok))
@@ -857,4 +972,3 @@ class Parser:
         end = self.current_tok
 
         return res.success(SwitchCaseNode(start, statements, end))
-
