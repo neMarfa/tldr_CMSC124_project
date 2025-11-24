@@ -1,5 +1,6 @@
 from parser import *
 from values import *
+import string_with_arrows
 
 
 class Interpreter:
@@ -246,92 +247,75 @@ class Interpreter:
 
         if op_type == "BOTH SAEM":
             # Equality comparison
+            if type(left) != type(right):
+                error_msg = f"Type Error: Cannot compare different types in BOTH SAEM: {type(left).__name__} and {type(right).__name__}\n{node.pos_start.fn}, line {node.pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(node.pos_start.ftxt, node.pos_start, node.pos_end)}"
+                raise Exception(error_msg)
             result = self.equality_check(left, right)
             return BoolOps(result).set_pos(node.pos_start, node.pos_end)
         elif op_type == "DIFFRINT":
             # Inequality comparison
+            if type(left) != type(right):
+                error_msg = f"Type Error: Cannot compare different types in DIFFRINT: {type(left).__name__} and {type(right).__name__}\n{node.pos_start.fn}, line {node.pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(node.pos_start.ftxt, node.pos_start, node.pos_end)}"
+                raise Exception(error_msg)
             result = not self.equality_check(left, right)
             return BoolOps(result).set_pos(node.pos_start, node.pos_end)
         elif op_type == "BIGGR OF":
             # Maximum operation
-            result = self.max_operation(left, right)
-            return result.set_pos(node.pos_start, node.pos_end)
+            return self.max_operation(left, right, node.pos_start, node.pos_end)
         elif op_type == "SMALLR OF":
             # Minimum operation
-            result = self.min_operation(left, right)
-            return result.set_pos(node.pos_start, node.pos_end)
+            return self.min_operation(left, right, node.pos_start, node.pos_end)
         else:
             raise Exception(f"Unknown comparison operation: {op_type}")
 
     def equality_check(self, left, right):
-        # Same types
         if type(left) == type(right):
             return left.value == right.value
 
-        # Different types: try to convert for comparison
-        # Numbers 
-        if isinstance(left, NumOps) and isinstance(right, NumOps):
-            return left.value == right.value
-        # Boolean
-        if isinstance(left, BoolOps) and isinstance(right, BoolOps):
-            return left.value == right.value
-        # Strings
-        if isinstance(left, StringOps) and isinstance(right, StringOps):
-            return left.value == right.value
-        # NOOB only equals NOOB
-        if isinstance(left, NoobOps) and isinstance(right, NoobOps):
-            return True
-
-        # Implicit boolean conversion for mixed type comparisons
-        if (isinstance(left, BoolOps) and isinstance(right, (NumOps, StringOps, NoobOps))) or \
-           (isinstance(right, BoolOps) and isinstance(left, (NumOps, StringOps, NoobOps))):
-            return self.to_bool(left) == self.to_bool(right)
-
-        # Different types that can't be compared not equal
+        # Different types are not equal
         return False
 
-    def max_operation(self, left, right):
+    def format_detailed_error(self, pos_start, pos_end, error_name, details):
+        result = f'{error_name}: {details}'
+        result += f'\n{pos_start.fn}, line {pos_start.ln+1}'
+        result += '\n\n' + string_with_arrows.string_with_arrows(pos_start.ftxt, pos_start, pos_end)
+        return result
+
+    def max_operation(self, left, right, pos_start, pos_end):
+        if type(left) != type(right):
+            error_msg = f"Type Error: Cannot compare different types in BIGGR OF: {type(left).__name__} and {type(right).__name__}\n{pos_start.fn}, line {pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(pos_start.ftxt, pos_start, pos_end)}"
+            raise Exception(error_msg)
+
         try:
             # Numbers: standard max
-            if isinstance(left, NumOps) and isinstance(right, NumOps):
-                return NumOps(max(left.value, right.value))
+            if isinstance(left, NumOps):
+                return NumOps(max(left.value, right.value)).set_pos(pos_start, pos_end)
             # Strings: lexicographic max
-            elif isinstance(left, StringOps) and isinstance(right, StringOps):
-                return StringOps(max(left.value, right.value))
+            elif isinstance(left, StringOps):
+                return StringOps(max(left.value, right.value)).set_pos(pos_start, pos_end)
             # Booleans: True > False
-            elif isinstance(left, BoolOps) and isinstance(right, BoolOps):
-                return BoolOps(True) if left.value else right
-            # Mixed types: try numeric comparison first
-            elif isinstance(left, NumOps) or isinstance(right, NumOps):
-                left_num = left.value if isinstance(left, NumOps) else (1 if self.to_bool(left) else 0)
-                right_num = right.value if isinstance(right, NumOps) else (1 if self.to_bool(right) else 0)
-                return left if left_num >= right_num else right
-            else:
-                # return left as default
-                return left
-        except:
-            # If comparison fails, return left
-            return left
+            elif isinstance(left, BoolOps):
+                result = BoolOps(True) if left.value else right
+                return result.set_pos(pos_start, pos_end)
+        except Exception as e:
+            error_msg = self.format_detailed_error(pos_start, pos_end, "Runtime Error", f"Error in BIGGR OF operation: {e}")
+            raise Exception(error_msg)
 
-    def min_operation(self, left, right):
+    def min_operation(self, left, right, pos_start, pos_end):
+        if type(left) != type(right):
+            error_msg = f"Type Error: Cannot compare different types in SMALLR OF: {type(left).__name__} and {type(right).__name__}\n{pos_start.fn}, line {pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(pos_start.ftxt, pos_start, pos_end)}"
+            raise Exception(error_msg)
+
         try:
             # Numbers: standard min
-            if isinstance(left, NumOps) and isinstance(right, NumOps):
-                return NumOps(min(left.value, right.value))
+            if isinstance(left, NumOps):
+                return NumOps(min(left.value, right.value)).set_pos(pos_start, pos_end)
             # Strings: lexicographic min
-            elif isinstance(left, StringOps) and isinstance(right, StringOps):
-                return StringOps(min(left.value, right.value))
+            elif isinstance(left, StringOps):
+                return StringOps(min(left.value, right.value)).set_pos(pos_start, pos_end)
             # Booleans: False < True
-            elif isinstance(left, BoolOps) and isinstance(right, BoolOps):
-                return BoolOps(False) if not left.value else right
-            # Mixed types: try numeric comparison first
-            elif isinstance(left, NumOps) or isinstance(right, NumOps):
-                left_num = left.value if isinstance(left, NumOps) else (1 if self.to_bool(left) else 0)
-                right_num = right.value if isinstance(right, NumOps) else (1 if self.to_bool(right) else 0)
-                return left if left_num <= right_num else right
-            else:
-                # return left as default
-                return left
-        except:
-            # If comparison fails, return left
-            return left
+            elif isinstance(left, BoolOps):
+                result = BoolOps(False) if not left.value else right
+                return result.set_pos(pos_start, pos_end)
+        except Exception as e:
+            error_msg = self.format_detailed_error(pos_start, pos_end, "Runtime Error", f"Error in SMALLR OF operation: {e}")
