@@ -237,3 +237,101 @@ class Interpreter:
 
         bool_result = BoolOps(result)
         return bool_result.set_pos(node.pos_start, node.pos_end)
+
+    def visit_ComparisonNode(self, node):
+        op_type = node.op_tok.value
+
+        left = self.visit(node.left_node)
+        right = self.visit(node.right_node)
+
+        if op_type == "BOTH SAEM":
+            # Equality comparison
+            result = self.equality_check(left, right)
+            return BoolOps(result).set_pos(node.pos_start, node.pos_end)
+        elif op_type == "DIFFRINT":
+            # Inequality comparison
+            result = not self.equality_check(left, right)
+            return BoolOps(result).set_pos(node.pos_start, node.pos_end)
+        elif op_type == "BIGGR OF":
+            # Maximum operation
+            result = self.max_operation(left, right)
+            return result.set_pos(node.pos_start, node.pos_end)
+        elif op_type == "SMALLR OF":
+            # Minimum operation
+            result = self.min_operation(left, right)
+            return result.set_pos(node.pos_start, node.pos_end)
+        else:
+            raise Exception(f"Unknown comparison operation: {op_type}")
+
+    def equality_check(self, left, right):
+        # Same types
+        if type(left) == type(right):
+            return left.value == right.value
+
+        # Different types: try to convert for comparison
+        # Numbers 
+        if isinstance(left, NumOps) and isinstance(right, NumOps):
+            return left.value == right.value
+        # Boolean
+        if isinstance(left, BoolOps) and isinstance(right, BoolOps):
+            return left.value == right.value
+        # Strings
+        if isinstance(left, StringOps) and isinstance(right, StringOps):
+            return left.value == right.value
+        # NOOB only equals NOOB
+        if isinstance(left, NoobOps) and isinstance(right, NoobOps):
+            return True
+
+        # Implicit boolean conversion for mixed type comparisons
+        if (isinstance(left, BoolOps) and isinstance(right, (NumOps, StringOps, NoobOps))) or \
+           (isinstance(right, BoolOps) and isinstance(left, (NumOps, StringOps, NoobOps))):
+            return self.to_bool(left) == self.to_bool(right)
+
+        # Different types that can't be compared not equal
+        return False
+
+    def max_operation(self, left, right):
+        try:
+            # Numbers: standard max
+            if isinstance(left, NumOps) and isinstance(right, NumOps):
+                return NumOps(max(left.value, right.value))
+            # Strings: lexicographic max
+            elif isinstance(left, StringOps) and isinstance(right, StringOps):
+                return StringOps(max(left.value, right.value))
+            # Booleans: True > False
+            elif isinstance(left, BoolOps) and isinstance(right, BoolOps):
+                return BoolOps(True) if left.value else right
+            # Mixed types: try numeric comparison first
+            elif isinstance(left, NumOps) or isinstance(right, NumOps):
+                left_num = left.value if isinstance(left, NumOps) else (1 if self.to_bool(left) else 0)
+                right_num = right.value if isinstance(right, NumOps) else (1 if self.to_bool(right) else 0)
+                return left if left_num >= right_num else right
+            else:
+                # return left as default
+                return left
+        except:
+            # If comparison fails, return left
+            return left
+
+    def min_operation(self, left, right):
+        try:
+            # Numbers: standard min
+            if isinstance(left, NumOps) and isinstance(right, NumOps):
+                return NumOps(min(left.value, right.value))
+            # Strings: lexicographic min
+            elif isinstance(left, StringOps) and isinstance(right, StringOps):
+                return StringOps(min(left.value, right.value))
+            # Booleans: False < True
+            elif isinstance(left, BoolOps) and isinstance(right, BoolOps):
+                return BoolOps(False) if not left.value else right
+            # Mixed types: try numeric comparison first
+            elif isinstance(left, NumOps) or isinstance(right, NumOps):
+                left_num = left.value if isinstance(left, NumOps) else (1 if self.to_bool(left) else 0)
+                right_num = right.value if isinstance(right, NumOps) else (1 if self.to_bool(right) else 0)
+                return left if left_num <= right_num else right
+            else:
+                # return left as default
+                return left
+        except:
+            # If comparison fails, return left
+            return left
