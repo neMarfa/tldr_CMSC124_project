@@ -46,6 +46,23 @@ class Interpreter:
         right = self.visit(node.right_node)
         operand = node.op_tok.value
 
+        if isinstance(left.value, str):
+            stored = self.symbol_table[left.value]
+            if isinstance(stored.value, int) or isinstance(stored.value, float):
+                left = stored
+            else:
+                error_msg = f"Type Error: Cannot proceed with arithmetic operations on NON-NUMBR/NUMBAR types: {type(left).__name__} and {type(right).__name__}\n{node.pos_start.fn}, line {node.pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(node.pos_start.ftxt, node.pos_start, node.pos_end)}"
+                raise Exception(error_msg)
+        
+        if isinstance(right.value, str):
+            stored = self.symbol_table[right.value]
+
+            if isinstance(stored.value, int) or isinstance(stored.value, float):
+                right = stored
+            else:
+                error_msg = f"Type Error: Cannot proceed with arithmetic operations on NON-NUMBR/NUMBAR types: {type(left).__name__} and {type(right).__name__}\n{node.pos_start.fn}, line {node.pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(node.pos_start.ftxt, node.pos_start, node.pos_end)}"
+                raise Exception(error_msg)
+
         if operand == "SUM OF":
             result = left.sum_of(right)
         elif operand == "DIFF OF":

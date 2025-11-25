@@ -516,7 +516,7 @@ class Parser:
         res = ParserResult()
         tok = self.current_tok
 
-        if tok.type in (TK_INT, TK_FLOAT):
+        if tok.type in (TK_INT, TK_FLOAT, "varident"):
             res.register(self.advance())
             return res.success(NumberNode(tok))
         
@@ -544,9 +544,7 @@ class Parser:
             print(self.current_tok)
             return res.success(NumberNode(num))
 
-        elif tok.type == "varident":
-            pass
-                
+
         return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected NUMBR or NUMBAR "))
 
     # SUM OF, MOD OF, ETC
@@ -957,8 +955,6 @@ class Parser:
 
         expression = self.comparison_expr()
         if expression.error: return expression
-
-        print(self.tokens)
 
 
         if self.current_tok.type != TK_NEWLINE:
