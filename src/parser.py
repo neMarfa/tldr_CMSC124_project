@@ -269,6 +269,35 @@ class BooleanInfiniteNode:
     def __repr__(self):
         return f'({self.op_tok}, {self.operands})'
 
+
+# TODO: Update pos_end
+class FunctionDefinitionNode:
+    def __init__(self, op_tok, function_name, paramters):
+        self.op_tok = op_tok
+        self.function_name = function_name
+        self.paramters = paramters
+
+        self.pos_start = op_tok.pos_start
+        self.pos_end = function_name.pos_end
+
+class FunctionNode:
+    def __init__(self, start, body, end):
+        self.start = start
+        self.body = body
+        self.end = end
+
+        self.pos_start = start.node.pos_start
+        self.pos_end = end.pos_end
+
+
+class CallNode:
+    def __init__(self, op_tok, function_name, paramters):
+        self.op_tok = op_tok
+        self.function_name = function_name
+        self.paramters = paramters
+
+        self.pos_start = op_tok.pos_start
+        self.pos_end = function_name.pos_end
 #################################
 # RESULT
 #################################
@@ -406,6 +435,16 @@ class Parser:
             gimmeh = self.input()
             if gimmeh.error: return gimmeh
             statements.append(gimmeh.node)
+
+        elif self.current_tok.value == "I IZ":
+            call = self.func_call()
+            if call.error: return call
+            statements.append(call.node)
+
+        elif self.current_tok.value == "HOW IZ I":
+            func = self.function()
+            if func.error: return func
+            statements.append(func.node)
 
         elif self.current_tok.type == "varident":
             # try to extend and see if it's assignment (R) or typecast (IS NOW A)
@@ -1048,3 +1087,113 @@ class Parser:
         end = self.current_tok
 
         return res.success(SwitchCaseNode(start, statements, end))
+
+# Handles function definition
+    def function_definition(self):
+        res = ParserResult()
+        
+        start = self.current_tok
+
+        if start.value != "HOW IZ I":
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'HOW IZ I' "))
+        
+        res.register(self.advance())
+
+        func_name = self.current_tok
+
+        if func_name.type != TK_FUNC_IDENTIFIER:
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Function Identifier "))
+
+        res.register(self.advance())
+
+        params = []
+
+        # loops through all the paramters will stope once YR is no longer seen
+        while self.current_tok.value == "YR":
+            print("error in params")
+            res.register(self.advance())
+
+            # case for multi parameters
+            if self.current_tok.value == "AN":
+                res.register(self.advance())
+                if self.current_tok.value != "YR":
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'YR' "))
+                res.register(self.advance())
+
+            if self.current_tok.type != "varident":
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Parameter "))
+            params.append(self.current_tok)
+            res.register(self.advance())
+
+        return res.success(FunctionDefinitionNode(start, func_name, params))
+
+    # The function itself
+    def function(self):
+        res = ParserResult()
+
+        start = self.function_definition()
+
+        statements = []
+        res.register(self.advance())
+
+        # while delimeter has not been seen
+        while self.current_tok.value != "IF U SAY SO":
+            res.register(self.advance())
+            print(self.current_tok)
+            err = self.statement_section(statements)
+            if err != None: return err
+
+            if self.current_tok.value == "IF U SAY SO":
+                if self.previous_tok.type != TK_NEWLINE:
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
+                break
+
+            if self.current_tok.value == "KTHXBYE":
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Function Delimiter 'IF U SAY SO' " ))
+
+        end = self.current_tok
+
+        return res.success(FunctionNode(start, statements, end))
+    
+
+    def func_call(self):
+        res = ParserResult()
+
+        op_tok = self.current_tok
+
+        if op_tok.value != "I IZ":
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'I IZ' "))
+         
+        res.register(self.advance())
+
+        func_name = self.current_tok
+
+        if func_name.type != TK_FUNC_IDENTIFIER:
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Function Identifier "))
+
+        res.register(self.advance())
+
+        params = []
+
+        while self.current_tok.value == "YR":
+            res.register(self.advance())
+
+            expression = self.expression()
+            if expression.error: return expression
+
+            if self.current_tok.value == "AN":
+                res.register(self.advance())
+                if self.current_tok.value != "YR":
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'YR' "))
+
+            params.append(self.expression)
+
+        print(self.current_tok)
+        if self.current_tok.value != "MKAY":
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'MKAY' " ))
+
+        res.register(self.advance())
+
+
+        return res.success(CallNode(op_tok, func_name, params))
+        
