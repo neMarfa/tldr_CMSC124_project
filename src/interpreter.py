@@ -4,9 +4,10 @@ import string_with_arrows
 
 
 class Interpreter:
-    def __init__(self, console_writer = None):
+    def __init__(self, console_writer = None, input_writer = None):
         self.symbol_table = {}
         self.console_writer = console_writer
+        self.input_writer = input_writer
 
     # gagawa ng function based sa type na provided
     def visit(self, node):
@@ -123,6 +124,16 @@ class Interpreter:
          result = self.cast_value(value, desired_type)
          return result
     
+    # for user input
+    # TODO:add value node
+    def visit_GimmehNode(self, node):
+        var_name = node.varident
+        
+        value = self.input_writer()
+        self.symbol_table[var_name] = value
+
+        return value
+
     # handles typecast IS NOW A
     def visit_VarTypeCastNode(self, node):
         var_name = node.var_tok.value

@@ -14,6 +14,8 @@ class LOLCodeGUI:
         # variables to store program state
         self.tokens = []
         self.symbol_table = {}
+        self.input = ""
+        self.input_wait_flag = tk.BooleanVar(value=True)
         self.current_file = None
         
         # vscode dark theme colors 
@@ -187,17 +189,16 @@ class LOLCodeGUI:
     def execute_code(self):
         # reset previous executions
         self.clear_displays()
-        
+        self.console.bind("<Key>", self.prevent_console_delete)
+
         # get code from the text editor section
         code = self.text_editor.get("1.0", tk.END).strip()
         
         if not code:
             self.write_to_console("Error: No code to execute!\n")
             return
-        
         self.write_to_console("Executing code...\n")
         self.write_to_console("=" * 50 + "\n")
-        
         # run lexer
         lex = lexer.Lexer(self.file_name, code)
         tokens, error = lex.make_tokens()
@@ -225,7 +226,7 @@ class LOLCodeGUI:
         # ========== run semantic analyzer (interpreter) ==========
         
         from interpreter import Interpreter
-        interpreter = Interpreter(console_writer=self.write_to_console)
+        interpreter = Interpreter(console_writer=self.write_to_console, input_writer=self.obtain_console_input)
         
         try:
             # execute each statement
@@ -254,7 +255,9 @@ class LOLCodeGUI:
                 self.write_to_console(f"RUNTIME ERROR: {error_msg}\n")
             return
         # ========== end of semantic analyzer ==========
-        
+        # self.obtain_console_input()
+   
+
         self.write_to_console("\n" + "=" * 50 + "\n")
         self.write_to_console("Execution completed!\n")
     #------------------------------------------------------------------------------------------------------------
@@ -300,9 +303,56 @@ class LOLCodeGUI:
     def write_to_console(self, text):
         self.console.config(state=tk.NORMAL)
         self.console.insert(tk.END, text)
+        self.console.tag_add("read_only", "1.0", "end-1c")
         self.console.see(tk.END)
         self.console.config(state=tk.DISABLED)
     #------------------------------------------------------------------------------------------------------------
+
+    # this obtains the input based on a single line
+    def obtain_input(self, event):
+        content = self.console.get("insert linestart", "insert").strip()
+        self.input = content
+        self.input_wait_flag.set(True)
+
+    def prevent_console_delete(self, event):
+        # movement in the terminal is allowed
+        if event.keysym in ("Left", "Right", "Up", "Down", "Home", "End"):
+            return None
+        
+        tags = self.console.tag_names("insert")
+
+        # when the cursor position detects a tag that is read only, stop the keys
+        if "read_only" in tags:
+            return "break"
+
+        # Prevents deletion in the console 
+        if event.keysym == "BackSpace":
+            tags_before = self.console.tag_names("insert-1c")
+            if "read_only" in tags_before:
+                return "break"
+
+    # console input obtains values based on newline
+    def obtain_console_input(self):
+        self.console.config(state=tk.NORMAL)
+        # uses a flag to interrupt the program
+        self.input_wait_flag.set(False)
+
+        # Will run obtain_input when enter is pressed
+        self.console.bind("<Return>", self.obtain_input)
+        self.root.wait_variable(self.input_wait_flag)
+
+        self.console.config(state=tk.DISABLED)
+        # Makes the inputted file undeletable
+        self.console.tag_add("read_only", "insert linestart", "end-1c")
+
+        
+        retrieved = self.input
+        self.input = ''
+        return retrieved
+
+# END OF GIMMEH
+#####################################################################################
+
     def clear_displays(self):
         for item in self.lexeme_tree.get_children():
             self.lexeme_tree.delete(item)
