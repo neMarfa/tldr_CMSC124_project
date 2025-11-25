@@ -247,7 +247,11 @@ class LOLCodeGUI:
                 self.symbol_tree.insert("", tk.END, values=(var_name, display_value))  # add to tree
                 
         except Exception as e:
-            self.write_to_console(f"RUNTIME ERROR: {str(e)}\n")
+            error_msg = str(e)
+            if error_msg.startswith("Type Error:") or error_msg.startswith("Runtime Error:"):
+                self.write_to_console(f"{error_msg}\n")
+            else:
+                self.write_to_console(f"RUNTIME ERROR: {error_msg}\n")
             return
         # ========== end of semantic analyzer ==========
         

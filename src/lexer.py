@@ -258,7 +258,7 @@ class Lexer:
 
         # For case in functions
         if len(tokens) != 0 and tokens[-1].value in function_specific:
-            tok_type = "Function Name"
+            tok_type = TK_FUNC_IDENTIFIER
 
         if len(tokens) != 0 and tokens[-1].value in loop_specific:
             tok_type = "Loop Identifier"

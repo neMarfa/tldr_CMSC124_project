@@ -1,5 +1,6 @@
 from parser import *
 from values import *
+import string_with_arrows
 
 
 class Interpreter:
@@ -18,6 +19,11 @@ class Interpreter:
 
     def visit_NumberNode(self, node):
         return NumOps(node.tok.value).set_pos(node.pos_start, node.pos_end)
+
+    def visit_BoolNode(self, node):
+        # Convert WIN -> True, FAIL -> False
+        bool_value = (node.tok.value == "WIN")
+        return BoolOps(bool_value).set_pos(node.pos_start, node.pos_end)
     
     def visit_ListNode(self, node):
         res = ParserResult()
@@ -161,12 +167,163 @@ class Interpreter:
             # cast to string
             return StringOps(str(value.value))
         
-        # TODO: for boolean
-        # elif target_type == "TROOF":
-        #     # cast to boolean
-        
+        elif target_type == "TROOF":
+            # cast to boolean
+            if isinstance(value, NumOps):
+                # Numbers: 0 = FAIL, non-zero = WIN
+                return BoolOps(value.value != 0)
+            elif isinstance(value, StringOps):
+                # Strings: empty = FAIL, non-empty = WIN
+                return BoolOps(len(value.value.strip()) > 0)
+            elif isinstance(value, BoolOps):
+                return value  # already boolean
+            elif isinstance(value, NoobOps):
+                return BoolOps(False)  # NOOB = FAIL
+            return BoolOps(True)  # default to WIN for unknown types
+
         elif target_type == "NOOB":
             # cast to null
             return NoobOps()
-        
+
         return value
+
+    # If the operands are not TROOFs, they should be implicitly typecast
+    def to_bool(self, value):
+        if isinstance(value, BoolOps):
+            return value.value
+        elif isinstance(value, NumOps):
+            return value.value != 0
+        elif isinstance(value, StringOps):
+            return len(value.value.strip()) > 0
+        elif isinstance(value, NoobOps):
+            return False
+        return bool(value)  # fallback
+
+    def visit_BooleanNode(self, node):
+        op_type = node.op_tok.value
+
+        if op_type == "NOT":
+            # NOT operation
+            operand = self.visit(node.left_node)
+            bool_value = self.to_bool(operand)
+            result = BoolOps(not bool_value)
+        else:
+            # Binary operations
+            left = self.visit(node.left_node)
+            right = self.visit(node.right_node)
+
+            left_bool = self.to_bool(left)
+            right_bool = self.to_bool(right)
+
+            if op_type == "BOTH OF":
+                result = BoolOps(left_bool and right_bool)  # AND
+            elif op_type == "EITHER OF":
+                result = BoolOps(left_bool or right_bool)   # OR
+            elif op_type == "WON OF":
+                result = BoolOps(left_bool ^ right_bool)    # XOR
+            else:
+                raise Exception(f"Unknown boolean operation: {op_type}")
+
+        return result.set_pos(node.pos_start, node.pos_end)
+
+    def visit_BooleanInfiniteNode(self, node):
+        op_type = node.op_tok.value
+
+        # Evaluate all operands to boolean values
+        bool_operands = []
+        for operand_node in node.operands:
+            operand = self.visit(operand_node)
+            bool_operands.append(self.to_bool(operand))
+
+        if op_type == "ALL OF":
+            # ALL OF = AND all operands
+            result = all(bool_operands)
+        elif op_type == "ANY OF":
+            # ANY OF = OR all operands
+            result = any(bool_operands)
+        else:
+            raise Exception(f"Unknown infinite boolean operation: {op_type}")
+
+        bool_result = BoolOps(result)
+        return bool_result.set_pos(node.pos_start, node.pos_end)
+
+    def visit_ComparisonNode(self, node):
+        op_type = node.op_tok.value
+
+        left = self.visit(node.left_node)
+        right = self.visit(node.right_node)
+
+        if op_type == "BOTH SAEM":
+            # Equality comparison
+            if type(left) != type(right):
+                error_msg = f"Type Error: Cannot compare different types in BOTH SAEM: {type(left).__name__} and {type(right).__name__}\n{node.pos_start.fn}, line {node.pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(node.pos_start.ftxt, node.pos_start, node.pos_end)}"
+                raise Exception(error_msg)
+            result = self.equality_check(left, right)
+            return BoolOps(result).set_pos(node.pos_start, node.pos_end)
+        elif op_type == "DIFFRINT":
+            # Inequality comparison
+            if type(left) != type(right):
+                error_msg = f"Type Error: Cannot compare different types in DIFFRINT: {type(left).__name__} and {type(right).__name__}\n{node.pos_start.fn}, line {node.pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(node.pos_start.ftxt, node.pos_start, node.pos_end)}"
+                raise Exception(error_msg)
+            result = not self.equality_check(left, right)
+            return BoolOps(result).set_pos(node.pos_start, node.pos_end)
+        elif op_type == "BIGGR OF":
+            # Maximum operation
+            return self.max_operation(left, right, node.pos_start, node.pos_end)
+        elif op_type == "SMALLR OF":
+            # Minimum operation
+            return self.min_operation(left, right, node.pos_start, node.pos_end)
+        else:
+            raise Exception(f"Unknown comparison operation: {op_type}")
+
+    def equality_check(self, left, right):
+        if type(left) == type(right):
+            return left.value == right.value
+
+        # Different types are not equal
+        return False
+
+    def format_detailed_error(self, pos_start, pos_end, error_name, details):
+        result = f'{error_name}: {details}'
+        result += f'\n{pos_start.fn}, line {pos_start.ln+1}'
+        result += '\n\n' + string_with_arrows.string_with_arrows(pos_start.ftxt, pos_start, pos_end)
+        return result
+
+    def max_operation(self, left, right, pos_start, pos_end):
+        if type(left) != type(right):
+            error_msg = f"Type Error: Cannot compare different types in BIGGR OF: {type(left).__name__} and {type(right).__name__}\n{pos_start.fn}, line {pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(pos_start.ftxt, pos_start, pos_end)}"
+            raise Exception(error_msg)
+
+        try:
+            # Numbers: standard max
+            if isinstance(left, NumOps):
+                return NumOps(max(left.value, right.value)).set_pos(pos_start, pos_end)
+            # Strings: lexicographic max
+            elif isinstance(left, StringOps):
+                return StringOps(max(left.value, right.value)).set_pos(pos_start, pos_end)
+            # Booleans: True > False
+            elif isinstance(left, BoolOps):
+                result = BoolOps(True) if left.value else right
+                return result.set_pos(pos_start, pos_end)
+        except Exception as e:
+            error_msg = self.format_detailed_error(pos_start, pos_end, "Runtime Error", f"Error in BIGGR OF operation: {e}")
+            raise Exception(error_msg)
+
+    def min_operation(self, left, right, pos_start, pos_end):
+        if type(left) != type(right):
+            error_msg = f"Type Error: Cannot compare different types in SMALLR OF: {type(left).__name__} and {type(right).__name__}\n{pos_start.fn}, line {pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(pos_start.ftxt, pos_start, pos_end)}"
+            raise Exception(error_msg)
+
+        try:
+            # Numbers: standard min
+            if isinstance(left, NumOps):
+                return NumOps(min(left.value, right.value)).set_pos(pos_start, pos_end)
+            # Strings: lexicographic min
+            elif isinstance(left, StringOps):
+                return StringOps(min(left.value, right.value)).set_pos(pos_start, pos_end)
+            # Booleans: False < True
+            elif isinstance(left, BoolOps):
+                result = BoolOps(False) if not left.value else right
+                return result.set_pos(pos_start, pos_end)
+        except Exception as e:
+            error_msg = self.format_detailed_error(pos_start, pos_end, "Runtime Error", f"Error in SMALLR OF operation: {e}")

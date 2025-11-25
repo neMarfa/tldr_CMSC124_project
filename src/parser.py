@@ -17,9 +17,18 @@ class NumberNode:
         self.tok = tok
         self.pos_start = self.tok.pos_start
         self.pos_end = self.tok.pos_end
-    
+
     def __repr__(self):
         return f'{self.tok.type}:{self.tok}'
+
+class BoolNode:
+    def __init__(self, tok):
+        self.tok = tok
+        self.pos_start = self.tok.pos_start
+        self.pos_end = self.tok.pos_end
+
+    def __repr__(self):
+        return f'{self.tok}'
 
 # WILL HOLD ALL THE STATEMENTS
 class ListNode:
@@ -71,11 +80,12 @@ class ArithmeticNode:
         return f'({self.op_tok}, {self.left_node}, {self.separator_node}, {self.right_node})'
 
 class LoopDeclarationNode:
-    def __init__(self, op_tok, label, operation, varident, expression):
+    def __init__(self, op_tok, label, operation, varident, clause, expression):
         self.op_tok = op_tok
         self.label = label
         self.operation = operation
         self.varident = varident
+        self.clause = clause
         self.expression = expression
         self.pos_start = op_tok.pos_start
         self.pos_end = expression.pos_end
@@ -161,6 +171,17 @@ class VarDeclNode:
             return f'(I HAS A, {self.identifier_tok}, {self.assignment_tok}, {self.value_node})'
         return f'(I HAS A, {self.identifier_tok})'
 
+class GimmehNode:
+    def __init__(self, keyword, varident):
+        self.keyword_tok = keyword
+        self.varident = varident
+        self.pos_start = keyword.pos_start
+        self.pos_end = varident.pos_end
+    
+    def __repr__(self):
+        return f'({self.keyword_tok}, {self.varident})'
+
+
 class ComparisonNode:
     def __init__(self, op_tok, left_node, separator_node, right_node):
         self.op_tok = op_tok 
@@ -235,6 +256,59 @@ class SwitchOMGWTFNode:
     def __repr__(self):
         return f'({self.start}, {self.code})'
 
+class BooleanNode:
+    def __init__(self, op_tok, left_node, right_node=None):
+        self.op_tok = op_tok
+        self.left_node = left_node
+        self.right_node = right_node  # None for NOT operation
+        self.pos_start = op_tok.pos_start
+        self.pos_end = (right_node.pos_end if right_node else left_node.pos_end)
+
+    def __repr__(self):
+        if self.right_node:
+            return f'({self.op_tok}, {self.left_node}, {self.right_node})'
+        return f'({self.op_tok}, {self.left_node})'
+
+class BooleanInfiniteNode:
+    def __init__(self, op_tok, operands, end_tok):
+        self.op_tok = op_tok  # ALL OF or ANY OF
+        self.operands = operands  # List of expressions
+        self.end_tok = end_tok  # MKAY token
+        self.pos_start = op_tok.pos_start
+        self.pos_end = end_tok.pos_end
+
+    def __repr__(self):
+        return f'({self.op_tok}, {self.operands})'
+
+
+# TODO: Update pos_end
+class FunctionDefinitionNode:
+    def __init__(self, op_tok, function_name, paramters):
+        self.op_tok = op_tok
+        self.function_name = function_name
+        self.paramters = paramters
+
+        self.pos_start = op_tok.pos_start
+        self.pos_end = function_name.pos_end
+
+class FunctionNode:
+    def __init__(self, start, body, end):
+        self.start = start
+        self.body = body
+        self.end = end
+
+        self.pos_start = start.node.pos_start
+        self.pos_end = end.pos_end
+
+
+class CallNode:
+    def __init__(self, op_tok, function_name, paramters):
+        self.op_tok = op_tok
+        self.function_name = function_name
+        self.paramters = paramters
+
+        self.pos_start = op_tok.pos_start
+        self.pos_end = function_name.pos_end
 #################################
 # RESULT
 #################################
@@ -282,6 +356,7 @@ class Parser:
 
     # TODO:make possible not only for arithmetic operations
     def parse(self):
+        print(self.tokens)
         res = self.statements()
         return res  
 
@@ -340,6 +415,7 @@ class Parser:
                 res.register(self.advance())
                 if self.current_tok.value == "KTHXBYE":
                     break
+            res.register(self.advance())
 
         return res.success(statements)
 
@@ -379,6 +455,21 @@ class Parser:
             typecast = self.typecast_maek()
             if typecast.error: return typecast
             statements.append(typecast.node)
+
+        elif self.current_tok.value == "GIMMEH":
+            gimmeh = self.input()
+            if gimmeh.error: return gimmeh
+            statements.append(gimmeh.node)
+
+        elif self.current_tok.value == "I IZ":
+            call = self.func_call()
+            if call.error: return call
+            statements.append(call.node)
+
+        elif self.current_tok.value == "HOW IZ I":
+            func = self.function()
+            if func.error: return func
+            statements.append(func.node)
 
         elif self.current_tok.type == "varident":
             # try to extend and see if it's assignment (R) or typecast (IS NOW A)
@@ -424,10 +515,38 @@ class Parser:
     def arithmetic_values(self):
         res = ParserResult()
         tok = self.current_tok
-        if tok.type in (TK_INT, TK_FLOAT, "varident"):
+
+        if tok.type in (TK_INT, TK_FLOAT):
+            res.register(self.advance())
+            return res.success(NumberNode(tok))
+        
+        # case for boolean expressions
+        elif tok.type == TK_BOOL:
+            if tok.value == "WIN":
+                tok.value = 1
+            else:
+                tok.value = 0
             res.register(self.advance())
             return res.success(NumberNode(tok))
 
+        # case when it is a string but it is a integer
+        elif tok.type == TK_STRING_DELIMITER:
+            res.register(self.advance())
+            num = self.current_tok
+            print(num)
+            if not num.value.isdigit():
+                return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected Typecastable String Value "))
+            
+            num.value = int(num.value)
+            res.register(self.advance())
+            res.register(self.advance())
+
+            print(self.current_tok)
+            return res.success(NumberNode(num))
+
+        elif tok.type == "varident":
+            pass
+                
         return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected NUMBR or NUMBAR "))
 
     # SUM OF, MOD OF, ETC
@@ -517,10 +636,84 @@ class Parser:
         right = res.register(self.expression())
         if res.error: return res
         
-        # All comparison operations use the same node type
-        # The interpreter will handle the difference based on op_tok.value
         return res.success(ComparisonNode(op_tok, left, delimiter, right))
-    
+
+    def boolean_expr(self):
+        res = ParserResult()
+
+        # Handle NOT 
+        if self.current_tok.value == "NOT":
+            op_tok = self.current_tok
+            res.register(self.advance())
+
+            operand = res.register(self.expression())
+            if res.error: return res
+
+            return res.success(BooleanNode(op_tok, operand))
+
+        # Handle infinite arity operators (ALL OF, ANY OF)
+        if self.current_tok.value in ("ALL OF", "ANY OF"):
+            op_tok = self.current_tok
+            res.register(self.advance())
+
+            operands = []
+
+            # Parse first operand
+            expr = res.register(self.expression())
+            if res.error: return res
+            operands.append(expr)
+
+            # Parse additional operands separated by AN
+            while self.current_tok.type == TK_DELIMITER:
+                res.register(self.advance())  # Skip AN
+                expr = res.register(self.expression())
+                if res.error: return res
+                operands.append(expr)
+
+            # Check for MKAY terminator
+            if self.current_tok.value != "MKAY":
+                return res.failure(InvalidSyntaxError(
+                    self.current_tok.pos_start,
+                    self.current_tok.pos_end,
+                    "Expected 'MKAY'"
+                ))
+
+            end_tok = self.current_tok
+            res.register(self.advance())
+
+            return res.success(BooleanInfiniteNode(op_tok, operands, end_tok))
+
+        # Handle binary boolean operators (BOTH OF, EITHER OF, WON OF)
+        if self.current_tok.value in ("BOTH OF", "EITHER OF", "WON OF"):
+            op_tok = self.current_tok
+            res.register(self.advance())
+
+            # Parse left operand
+            left = res.register(self.expression())
+            if res.error: return res
+
+            # Check for AN delimiter
+            if self.current_tok.type != TK_DELIMITER:
+                return res.failure(InvalidSyntaxError(
+                    self.current_tok.pos_start,
+                    self.current_tok.pos_end,
+                    "Expected 'AN'"
+                ))
+
+            res.register(self.advance())
+
+            # Parse right operand
+            right = res.register(self.expression())
+            if res.error: return res
+
+            return res.success(BooleanNode(op_tok, left, right))
+
+        return res.failure(InvalidSyntaxError(
+            self.current_tok.pos_start,
+            self.current_tok.pos_end,
+            "Expected boolean operator"
+        ))
+
     def print_statement(self):
       
         # format: VISIBLE <expression> [AN <expression>]*
@@ -693,6 +886,20 @@ class Parser:
         
         return res.success(AssignmentNode(tok, r_tok, value))
 
+    
+    def input(self):
+        res = ParserResult()
+        tok = self.current_tok
+        res.register(self.advance())
+        var = self.current_tok
+
+        if var.type != "varident":
+            return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected variable identifier "))
+        res.register(self.advance())
+
+        return res.success(GimmehNode(tok, var))
+        
+
 # used for the loop_declaration part
 # TODO: ADD CONDITIONAL OPERATORS
     def loop_declaration(self):
@@ -733,15 +940,31 @@ class Parser:
 
         res.register(self.advance())
 
-        expression = self.current_tok
+        clause = self.current_tok
 
         # TODO: ADD CONDITIONAL OPERATORS
-        if expression.value not in ("TIL", "WILE"):
-            return res.failure(InvalidSyntaxError(expression.pos_start, expression.pos_end, "Expected Expression 'TIL' or 'WILE' "))
+        if clause.value not in ("TIL", "WILE"):
+            return res.failure(InvalidSyntaxError(clause.pos_start, clause.pos_end, "Expected clause 'TIL' or 'WILE' "))
 
         res.register(self.advance())
+    
+        expression = self.current_tok
 
-        return res.success(LoopDeclarationNode(declaration, label, operation, varident, expression))
+        print(expression.value not in ("BOTH SAEM", "DIFFRINT"))
+
+        if expression.value not in ("BOTH SAEM", "DIFFRINT") and expression.value not in comparison_ops:
+            return res.failure(InvalidSyntaxError(expression.pos_start, expression.pos_end, "Expected 'BOTH SAEM', 'DIFFRINT', 'BIGGR OF', or 'SMALLR OF' "))
+
+        expression = self.comparison_expr()
+        if expression.error: return expression
+
+        print(self.tokens)
+
+
+        if self.current_tok.type != TK_NEWLINE:
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
+
+        return res.success(LoopDeclarationNode(declaration, label, operation, varident, clause, expression.node))
 
     # for the loop delimiter
     def loop_end(self):
@@ -766,10 +989,9 @@ class Parser:
     def loop(self):
         res = ParserResult()
         start = self.loop_declaration()
+
         if start.error: return start
-        
-        if self.current_tok.type != TK_NEWLINE:
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
+        print(self.current_tok)
 
         statements = []
 
@@ -795,19 +1017,23 @@ class Parser:
 
     def expression(self):
         """
-        Parses any expression (literals, identifiers, arithmetic, comparisons, etc.)
+        Parses any expression (literals, identifiers, arithmetic, comparisons, booleans, etc.)
         """
         res = ParserResult()
         tok = self.current_tok
-        
+
         if tok.type == TK_STRING_DELIMITER:
             res.register(self.advance())
             tok = self.current_tok
 
         if tok.value == "MAEK":
             return self.typecast_maek()
-        
-        # Check for comparison operators and operations (BOTH SAEM, DIFFRINT, BIGGR OF, SMALLR OF)
+
+        # Check for boolean operators first (highest precedence)
+        if tok.value in ("NOT", "ALL OF", "ANY OF", "BOTH OF", "EITHER OF", "WON OF"):
+            return self.boolean_expr()
+
+        # Check for comparison operators and operations
         if tok.value in ("BOTH SAEM", "DIFFRINT") or tok.value in comparison_ops:
             return self.comparison_expr()
         
@@ -818,13 +1044,17 @@ class Parser:
         if tok.type in (TK_INT, TK_FLOAT):
             res.register(self.advance())
             return res.success(NumberNode(tok))
-        
+
         if tok.type == TK_STRING:
             res.register(self.advance())
             if self.current_tok and self.current_tok.type == TK_STRING_DELIMITER:
                 res.register(self.advance())
             return res.success(StringNode(tok))
-        
+
+        if tok.type == TK_BOOL:
+            res.register(self.advance())
+            return res.success(BoolNode(tok))  # WIN -> true, FAIL -> false
+
         if tok.type == "varident":
             res.register(self.advance())
             return res.success(IdentifierNode(tok))
@@ -832,6 +1062,7 @@ class Parser:
         return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected expression"))
 
 
+# Handles the cases for the switch statement
     def switch_keywords(self, statements):
         res = ParserResult()
         inner_code = []
@@ -898,7 +1129,7 @@ class Parser:
         
         return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'OMG' " ))
 
-
+#  Handles the entire switch statement
     def switch_case(self):
         res = ParserResult()
         start = self.current_tok
@@ -911,7 +1142,6 @@ class Parser:
         res.register(self.advance())
 
         while self.current_tok.value != "OIC":
-
             err = self.switch_keywords(statements)
             if err != None: return err
 
@@ -926,3 +1156,113 @@ class Parser:
         end = self.current_tok
 
         return res.success(SwitchCaseNode(start, statements, end))
+
+# Handles function definition
+    def function_definition(self):
+        res = ParserResult()
+        
+        start = self.current_tok
+
+        if start.value != "HOW IZ I":
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'HOW IZ I' "))
+        
+        res.register(self.advance())
+
+        func_name = self.current_tok
+
+        if func_name.type != TK_FUNC_IDENTIFIER:
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Function Identifier "))
+
+        res.register(self.advance())
+
+        params = []
+
+        # loops through all the paramters will stope once YR is no longer seen
+        while self.current_tok.value == "YR":
+            print("error in params")
+            res.register(self.advance())
+
+            # case for multi parameters
+            if self.current_tok.value == "AN":
+                res.register(self.advance())
+                if self.current_tok.value != "YR":
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'YR' "))
+                res.register(self.advance())
+
+            if self.current_tok.type != "varident":
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Parameter "))
+            params.append(self.current_tok)
+            res.register(self.advance())
+
+        return res.success(FunctionDefinitionNode(start, func_name, params))
+
+    # The function itself
+    def function(self):
+        res = ParserResult()
+
+        start = self.function_definition()
+
+        statements = []
+        res.register(self.advance())
+
+        # while delimeter has not been seen
+        while self.current_tok.value != "IF U SAY SO":
+            res.register(self.advance())
+            print(self.current_tok)
+            err = self.statement_section(statements)
+            if err != None: return err
+
+            if self.current_tok.value == "IF U SAY SO":
+                if self.previous_tok.type != TK_NEWLINE:
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
+                break
+
+            if self.current_tok.value == "KTHXBYE":
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Function Delimiter 'IF U SAY SO' " ))
+
+        end = self.current_tok
+
+        return res.success(FunctionNode(start, statements, end))
+    
+
+    def func_call(self):
+        res = ParserResult()
+
+        op_tok = self.current_tok
+
+        if op_tok.value != "I IZ":
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'I IZ' "))
+         
+        res.register(self.advance())
+
+        func_name = self.current_tok
+
+        if func_name.type != TK_FUNC_IDENTIFIER:
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Function Identifier "))
+
+        res.register(self.advance())
+
+        params = []
+
+        while self.current_tok.value == "YR":
+            res.register(self.advance())
+
+            expression = self.expression()
+            if expression.error: return expression
+
+            if self.current_tok.value == "AN":
+                res.register(self.advance())
+                if self.current_tok.value != "YR":
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'YR' "))
+
+            params.append(self.expression)
+
+        print(self.current_tok)
+        if self.current_tok.value != "MKAY":
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'MKAY' " ))
+
+        res.register(self.advance())
+
+
+        return res.success(CallNode(op_tok, func_name, params))
+        
