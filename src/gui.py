@@ -224,7 +224,13 @@ class LOLCodeGUI:
         # self.write_to_console(f"Parse Tree: {parse_result.node}\n")       # uncomment for checking
 
         # ========== run semantic analyzer (interpreter) ==========
-        
+        # Debug: Print the parsed statements
+        print("\n=== PARSED STATEMENTS ===")
+        for i, stmt in enumerate(parse_result.node):
+            print(f"Statement {i}: {type(stmt).__name__}")
+            if hasattr(stmt, '__repr__'):
+                print(f"  Details: {repr(stmt)}")
+        print("=========================\n")
         from interpreter import Interpreter
         interpreter = Interpreter(console_writer=self.write_to_console, input_writer=self.obtain_console_input)
         

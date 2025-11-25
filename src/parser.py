@@ -415,7 +415,7 @@ class Parser:
                 res.register(self.advance())
                 if self.current_tok.value == "KTHXBYE":
                     break
-            res.register(self.advance())
+            # res.register(self.advance())
 
         return res.success(statements)
 

@@ -103,7 +103,7 @@ class Interpreter:
             value = NoobOps()     # basically null siya
             print("Uninitialized")
         self.symbol_table[var_name] = value
-        print(f"Declared var: {var_name}\nValue: {value}")  # for checking
+        # print(f"Declared var: {var_name}\nValue: {value}")  # for checking
 
         return value
 

@@ -1,7 +1,10 @@
 BTW Basic Variable Declaration
 HAI
+WAZZUP
 I HAS A x ITZ 5
 I HAS A name ITZ "Alice"
 I HAS A pi ITZ 3.14
 I HAS A empty
+BUHBYE
+VISIBLE pi
 KTHXBYE
