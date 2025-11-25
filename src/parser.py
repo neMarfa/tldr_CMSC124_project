@@ -80,11 +80,12 @@ class ArithmeticNode:
         return f'({self.op_tok}, {self.left_node}, {self.separator_node}, {self.right_node})'
 
 class LoopDeclarationNode:
-    def __init__(self, op_tok, label, operation, varident, expression):
+    def __init__(self, op_tok, label, operation, varident, clause, expression):
         self.op_tok = op_tok
         self.label = label
         self.operation = operation
         self.varident = varident
+        self.clause = clause
         self.expression = expression
         self.pos_start = op_tok.pos_start
         self.pos_end = expression.pos_end
@@ -158,6 +159,17 @@ class VarDeclNode:
         if self.assignment_tok and self.value_node:
             return f'(I HAS A, {self.identifier_tok}, {self.assignment_tok}, {self.value_node})'
         return f'(I HAS A, {self.identifier_tok})'
+
+class GimmehNode:
+    def __init__(self, keyword, varident):
+        self.keyword_tok = keyword
+        self.varident = varident
+        self.pos_start = keyword.pos_start
+        self.pos_end = varident.pos_end
+    
+    def __repr__(self):
+        return f'({self.keyword_tok}, {self.varident})'
+
 
 class ComparisonNode:
     def __init__(self, op_tok, left_node, separator_node, right_node):
@@ -304,6 +316,7 @@ class Parser:
 
     # TODO:make possible not only for arithmetic operations
     def parse(self):
+        print(self.tokens)
         res = self.statements()
         return res  
 
@@ -348,6 +361,7 @@ class Parser:
                 res.register(self.advance())
                 if self.current_tok.value == "KTHXBYE":
                     break
+            res.register(self.advance())
 
         return res.success(statements)
 
@@ -387,6 +401,11 @@ class Parser:
             typecast = self.typecast_maek()
             if typecast.error: return typecast
             statements.append(typecast.node)
+
+        elif self.current_tok.value == "GIMMEH":
+            gimmeh = self.input()
+            if gimmeh.error: return gimmeh
+            statements.append(gimmeh.node)
 
         elif self.current_tok.type == "varident":
             # try to extend and see if it's assignment (R) or typecast (IS NOW A)
@@ -432,10 +451,38 @@ class Parser:
     def arithmetic_values(self):
         res = ParserResult()
         tok = self.current_tok
-        if tok.type in (TK_INT, TK_FLOAT, "varident"):
+
+        if tok.type in (TK_INT, TK_FLOAT):
+            res.register(self.advance())
+            return res.success(NumberNode(tok))
+        
+        # case for boolean expressions
+        elif tok.type == TK_BOOL:
+            if tok.value == "WIN":
+                tok.value = 1
+            else:
+                tok.value = 0
             res.register(self.advance())
             return res.success(NumberNode(tok))
 
+        # case when it is a string but it is a integer
+        elif tok.type == TK_STRING_DELIMITER:
+            res.register(self.advance())
+            num = self.current_tok
+            print(num)
+            if not num.value.isdigit():
+                return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected Typecastable String Value "))
+            
+            num.value = int(num.value)
+            res.register(self.advance())
+            res.register(self.advance())
+
+            print(self.current_tok)
+            return res.success(NumberNode(num))
+
+        elif tok.type == "varident":
+            pass
+                
         return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected NUMBR or NUMBAR "))
 
     # SUM OF, MOD OF, ETC
@@ -731,6 +778,20 @@ class Parser:
         
         return res.success(AssignmentNode(tok, r_tok, value))
 
+    
+    def input(self):
+        res = ParserResult()
+        tok = self.current_tok
+        res.register(self.advance())
+        var = self.current_tok
+
+        if var.type != "varident":
+            return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected variable identifier "))
+        res.register(self.advance())
+
+        return res.success(GimmehNode(tok, var))
+        
+
 # used for the loop_declaration part
 # TODO: ADD CONDITIONAL OPERATORS
     def loop_declaration(self):
@@ -771,15 +832,31 @@ class Parser:
 
         res.register(self.advance())
 
-        expression = self.current_tok
+        clause = self.current_tok
 
         # TODO: ADD CONDITIONAL OPERATORS
-        if expression.value not in ("TIL", "WILE"):
-            return res.failure(InvalidSyntaxError(expression.pos_start, expression.pos_end, "Expected Expression 'TIL' or 'WILE' "))
+        if clause.value not in ("TIL", "WILE"):
+            return res.failure(InvalidSyntaxError(clause.pos_start, clause.pos_end, "Expected clause 'TIL' or 'WILE' "))
 
         res.register(self.advance())
+    
+        expression = self.current_tok
 
-        return res.success(LoopDeclarationNode(declaration, label, operation, varident, expression))
+        print(expression.value not in ("BOTH SAEM", "DIFFRINT"))
+
+        if expression.value not in ("BOTH SAEM", "DIFFRINT") and expression.value not in comparison_ops:
+            return res.failure(InvalidSyntaxError(expression.pos_start, expression.pos_end, "Expected 'BOTH SAEM', 'DIFFRINT', 'BIGGR OF', or 'SMALLR OF' "))
+
+        expression = self.comparison_expr()
+        if expression.error: return expression
+
+        print(self.tokens)
+
+
+        if self.current_tok.type != TK_NEWLINE:
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
+
+        return res.success(LoopDeclarationNode(declaration, label, operation, varident, clause, expression.node))
 
     # for the loop delimiter
     def loop_end(self):
@@ -804,10 +881,9 @@ class Parser:
     def loop(self):
         res = ParserResult()
         start = self.loop_declaration()
+
         if start.error: return start
-        
-        if self.current_tok.type != TK_NEWLINE:
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
+        print(self.current_tok)
 
         statements = []
 
@@ -878,6 +954,7 @@ class Parser:
         return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected expression"))
 
 
+# Handles the cases for the switch statement
     def switch_keywords(self, statements):
         res = ParserResult()
         inner_code = []
@@ -944,7 +1021,7 @@ class Parser:
         
         return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'OMG' " ))
 
-
+#  Handles the entire switch statement
     def switch_case(self):
         res = ParserResult()
         start = self.current_tok
@@ -957,7 +1034,6 @@ class Parser:
         res.register(self.advance())
 
         while self.current_tok.value != "OIC":
-
             err = self.switch_keywords(statements)
             if err != None: return err
 
