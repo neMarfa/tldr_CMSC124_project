@@ -138,6 +138,17 @@ class PrintNode:
     def __repr__(self):
         return f'(VISIBLE, {", ".join(str(expr) for expr in self.expressions)})'
     
+class VarDeclBlockNode:
+    def __init__(self, wazzup_tok, declarations, buhbye_tok):
+        self.wazzup_tok = wazzup_tok
+        self.declarations = declarations 
+        self.buhbye_tok = buhbye_tok
+        self.pos_start = wazzup_tok.pos_start
+        self.pos_end = buhbye_tok.pos_end
+    
+    def __repr__(self):
+        return f'(WAZZUP, {self.declarations}, BUHBYE)'
+
 class VarDeclNode:
     def __init__(self, keyword_tok, identifier_tok, assignment_tok=None, value_node=None):
         self.keyword_tok = keyword_tok
@@ -282,6 +293,7 @@ class Parser:
         final_tok = self.tokens[-1]
         pos_start = self.current_tok.pos_start.copy()
         statements = []
+        
         # checks if the first character in the list of tokens is the start of program character
         if tok.value != "HAI":
             return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'HAI' "))
@@ -297,6 +309,19 @@ class Parser:
             return res.failure(InvalidSyntaxError(final_tok.pos_start, final_tok.pos_end, "Expected 'KTHXBYE' "))
         
         # skip initial newlines
+        while self.current_tok.type == TK_NEWLINE:
+            res.register(self.advance())
+
+        # check for var declaration block using both value AND type
+        if self.current_tok.value != "WAZZUP" and self.current_tok.type != "Variable Declaration Block Start":
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'WAZZUP' after 'HAI' for variable declarations"))
+
+        var_block = self.var_decl_block()
+        if var_block.error:
+            return var_block
+        statements.append(var_block.node)
+
+        # skip newlines after BUHBYE
         while self.current_tok.type == TK_NEWLINE:
             res.register(self.advance())
 
@@ -335,10 +360,10 @@ class Parser:
             if print_stmt.error: return print_stmt
             statements.append(print_stmt.node)
 
-        elif self.current_tok.type == "Variable Declaration":
-            var_decl = self.var_declaration()
-            if var_decl.error: return var_decl
-            statements.append(var_decl.node)
+        # elif self.current_tok.type == "Variable Declaration":
+        #     var_decl = self.var_declaration()
+        #     if var_decl.error: return var_decl
+        #     statements.append(var_decl.node)
 
         elif self.current_tok.value in arithmetic:
             arith = self.arithmetic_expr()
@@ -522,6 +547,50 @@ class Parser:
         
         return res.success(PrintNode(tok, expressions))
 
+    def var_decl_block(self):
+        res = ParserResult()
+        # check both value and type
+        if self.current_tok.value != "WAZZUP" and self.current_tok.type != "Variable Declaration Block Start":
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'WAZZUP'"))
+        
+        # else, continue 
+        wazzup_tok = self.current_tok
+        res.register(self.advance())
+
+        # checkif there is newline after wazzup 
+        if self.current_tok.type != TK_NEWLINE:
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after WAZZUP"))
+    
+        res.register(self.advance())
+
+        # skip any extra newlines
+        while self.current_tok.type == TK_NEWLINE:
+            res.register(self.advance())
+
+        declarations = []   # initialize empty list (to be occupied by var declarations)
+        while self.current_tok.value != "BUHBYE" and self.current_tok.type != "Variable Declaration Block End":
+            while self.current_tok.type == TK_NEWLINE:
+                res.register(self.advance())
+            
+            if self.current_tok.value == "BUHBYE" or self.current_tok.type == "Variable Declaration Block End":
+                break
+
+            if self.current_tok.type == "Variable Declaration":
+                var_decl = self.var_declaration()
+                if var_decl.error:
+                    return var_decl
+                declarations.append(var_decl.node)
+            else: 
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected variable declaration (I HAS A) or BUHBYE"))
+
+        # assume that we're at the end of the wazzup code/ var block
+        if self.current_tok.value != "BUHBYE" and self.current_tok.type != "Variable Declaration Block End":
+               return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'BUHBYE'"))
+
+        buhbye_tok = self.current_tok
+        res.register(self.advance())
+        return res.success(VarDeclBlockNode(wazzup_tok, declarations, buhbye_tok))
+    
     def var_declaration(self):
         # format: I HAS A <identifier> [ITZ <expression>]
         res = ParserResult()
@@ -857,4 +926,3 @@ class Parser:
         end = self.current_tok
 
         return res.success(SwitchCaseNode(start, statements, end))
-

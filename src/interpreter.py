@@ -63,6 +63,14 @@ class Interpreter:
             raise Exception(f"Variable '{var_name}' is not defined.")
         return self.symbol_table[var_name]
     
+    def visit_VarDeclBlockNode(self, node):
+        # visit each declaration in the block
+        for decl in node.declarations:
+            self.visit(decl)
+        
+        # return None or a special value
+        return NoobOps()
+
     def visit_VarDeclNode(self, node):
         var_name = node.identifier_tok.value
         if node.value_node:
