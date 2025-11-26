@@ -1024,6 +1024,9 @@ class Parser:
 
         end = self.loop_end()
         
+        if end.node.label.value != start.node.label.value:
+            return res.failure(InvalidSyntaxError(end.node.pos_start, end.node.pos_end, "Expected Similar Start and End Label "))
+
         listed = ListNode(statements)
 
         return res.success(LoopNode(start.node, listed, end.node))
