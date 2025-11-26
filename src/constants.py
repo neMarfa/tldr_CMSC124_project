@@ -109,3 +109,13 @@ MULTIWORD_PREFIXES = [
     'IM', 'IM IN', 'IM OUTTA', 'HOW', 'HOW IZ', 'FOUND YR', 'FOUND' , "IF",
     "IF U", "IF U SAY", "IF U SAY SO"                                
 ]
+
+def checkFloat(assumedFloat):
+    try:
+        if float(assumedFloat) % 1 != 0:
+            return "FLOAT"
+        if assumedFloat.count('.') == 1:
+            return "FLOAT"
+        return "INT"
+    except ValueError:
+        return False

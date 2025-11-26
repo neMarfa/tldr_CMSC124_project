@@ -1,8 +1,10 @@
-BTW string assignment
-
 HAI
-I HAS A greeting ITZ "Hello"
-VISIBLE greeting
-greeting R "Goodbye"
-VISIBLE greeting
+WAZZUP
+I HAS A var ITZ 12
+BUHBYE
+
+VISIBLE var
+GIMMEH var
+VISIBLE var
+
 KTHXBYE

@@ -32,10 +32,8 @@ class BoolNode:
 
 # WILL HOLD ALL THE STATEMENTS
 class ListNode:
-    def __init__(self, statement_nodes, pos_start, pos_end):
+    def __init__(self, statement_nodes):
         self.statement_nodes = statement_nodes
-        self.pos_start = pos_start
-        self.pos_end = pos_end    
 
 class KeywordNode:
     def __init__(self, tok):
@@ -548,10 +546,14 @@ class Parser:
             res.register(self.advance())
             num = self.current_tok
             print(num)
-            if not num.value.isdigit():
+            if not checkFloat(num.value):
                 return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected Typecastable String Value "))
-            
-            num.value = int(num.value)
+
+            elif checkFloat(num.value) == "FLOAT":
+                num.value = float(num.value)
+            else:
+                num.value = int(num.value)
+
             res.register(self.advance())
             res.register(self.advance())
 
@@ -1022,7 +1024,9 @@ class Parser:
 
         end = self.loop_end()
         
-        return res.success(LoopNode(start.node, statements, end.node))
+        listed = ListNode(statements)
+
+        return res.success(LoopNode(start.node, listed, end.node))
 
 
     def expression(self):

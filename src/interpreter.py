@@ -32,7 +32,6 @@ class Interpreter:
     def visit_ListNode(self, node):
         res = ParserResult()
         statements = []
-        print("Found program node!")
         for statement in node.statement_nodes:
             statements.append(res.register(self.visit(statement))) 
 
@@ -54,25 +53,57 @@ class Interpreter:
             if left.value not in self.symbol_table:
                 raise Exception(f"Cannot assign to undeclared variable '{var_name}'")
         
-
             stored = self.symbol_table[left.value]
-            if isinstance(stored.value, int) or isinstance(stored.value, float):
+
+            if isinstance(stored, NumOps):
+                stored = self.symbol_table[left.value]
                 left = stored
-            else:
-                error_msg = f"Type Error: Cannot proceed with arithmetic operations on NON-NUMBR/NUMBAR types: {type(left).__name__} and {type(right).__name__}\n{node.pos_start.fn}, line {node.pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(node.pos_start.ftxt, node.pos_start, node.pos_end)}"
-                raise Exception(error_msg)
+
+            if isinstance(stored, BoolOps):
+                if stored.value == "WIN": 
+                    left = NumOps(1)
+                else:
+                    left = NumOps(0)
+
+
+            if isinstance(stored, StringOps):
+                if not checkFloat(stored.value):
+                    error_msg = f"Type Error: Cannot proceed with arithmetic operations on NON-NUMBR/NUMBAR types: {type(left).__name__} and {type(right).__name__}\n{node.pos_start.fn}, line {node.pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(node.pos_start.ftxt, node.pos_start, node.pos_end)}"
+                    raise Exception(error_msg)
+                    
+                elif checkFloat(stored.value) == "FLOAT": 
+                    left = NumOps(float(stored.value))
+                else:
+                    left = NumOps(int(stored.value))
+                    
         
         if isinstance(right.value, str):
             if right.value not in self.symbol_table:
                 raise Exception(f"Cannot assign to undeclared variable '{var_name}'")
         
             stored = self.symbol_table[right.value]
-
-            if isinstance(stored.value, int) or isinstance(stored.value, float):
+            desired = ""
+            if isinstance(stored, NumOps):
+                stored = self.symbol_table[right.value]
                 right = stored
-            else:
-                error_msg = f"Type Error: Cannot proceed with arithmetic operations on NON-NUMBR/NUMBAR types: {type(left).__name__} and {type(right).__name__}\n{node.pos_start.fn}, line {node.pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(node.pos_start.ftxt, node.pos_start, node.pos_end)}"
-                raise Exception(error_msg)
+
+            if isinstance(stored, BoolOps):
+                if stored.value == "WIN": 
+                    left = NumOps(1)
+                else:
+                    left = NumOps(0)
+
+            if isinstance(stored, StringOps):
+                if not checkFloat(stored.value):
+                    error_msg = f"Type Error: Cannot proceed with arithmetic operations on NON-NUMBR/NUMBAR types: {type(left).__name__} and {type(right).__name__}\n{node.pos_start.fn}, line {node.pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(node.pos_start.ftxt, node.pos_start, node.pos_end)}"
+                    raise Exception(error_msg)
+                    
+                elif checkFloat(stored.value) == "FLOAT": 
+                    right = NumOps(float(stored.value))
+                else:
+                    right = NumOps(int(stored.value))
+
+        
 
         if operand == "SUM OF":
             result = left.sum_of(right)
@@ -81,6 +112,9 @@ class Interpreter:
         elif operand == "PRODUKT OF":
             result = left.produkt_of(right)
         elif operand == "QUOSHUNT OF":
+            if left.value == 0 and right.value == 0:
+                error_msg = f"RUNTIME ERROR: DIVISION BY ZERO: {type(left).__name__} and {type(right).__name__}\n{node.pos_start.fn}, line {node.pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(node.pos_start.ftxt, node.pos_start, node.pos_end)}"
+                raise Exception(error_msg)
             result = left.quoshunt_of(right)
         elif operand == "MOD OF":
             result = left.mod_of(right)
@@ -393,3 +427,36 @@ class Interpreter:
         else:
             for stmt in node.else_statements:
                 self.visit(stmt)
+
+    def visit_LoopNode(self, node):
+        variable = node.start.varident
+        operation = node.start.operation.value
+        clause = node.start.clause.value
+
+
+        if variable.value not in self.symbol_table:
+            raise Exception(f"Cannot proceed with undeclared variable '{variable.value}'")
+        
+        if not isinstance(self.symbol_table[variable.value], NumOps):
+            error_msg = f"Type Error: Cannot proceed with loop on NON-NUMBR/NUMBAR types: line {variable.pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(variable.pos_start.ftxt, variable.pos_start, variable.pos_end)}"
+            raise Exception(error_msg)
+        count = 0
+        while True:
+            condition = self.visit(node.start.expression)
+            print(condition.value)
+            if condition.value == True and clause == "TIL": break
+            if condition.value == False and clause == "WILE": break
+
+            statements = self.visit(node.statements)
+
+            if operation == "UPPIN":
+                self.symbol_table[variable.value].value += 1
+            else:
+                self.symbol_table[variable.value].value -= 1
+
+            if count == 9999:
+                error_msg = f"Infinite Loop on loop {node.start.label}"
+                raise Exception(error_msg)
+            print(self.symbol_table[variable.value].value)
+            count += 1
+        return None
