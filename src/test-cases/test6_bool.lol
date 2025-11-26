@@ -1,6 +1,9 @@
 HAI
-    I HAS A x ITZ WIN
-    I HAS A y ITZ FAIL
+    WAZZUP 
+        I HAS A x ITZ WIN
+        I HAS A y ITZ FAIL
+    BUHBYE
+    
     VISIBLE BOTH OF x AN y
     VISIBLE NOT x
     VISIBLE ANY OF x AN x AN y MKAY

@@ -1,0 +1,57 @@
+HAI
+	WAZZUP
+		I HAS A x ITZ 10
+		I HAS A y ITZ 5
+	BUHBYE
+
+	VISIBLE BOTH SAEM x AN y
+	O RLY?
+		YA RLY
+			VISIBLE "x == y"
+	NO WAI
+			VISIBLE "x != y"
+	OIC
+
+	VISIBLE DIFFRINT x AN y
+	O RLY?
+		YA RLY
+			VISIBLE "x != y"
+	NO WAI
+			VISIBLE "x == y"
+	OIC
+
+	VISIBLE BOTH SAEM x AN BIGGR OF x AN y
+	O RLY?
+		YA RLY
+			VISIBLE "x >= y"
+		NO WAI
+			VISIBLE "x < y"
+	OIC
+
+	VISIBLE BOTH SAEM x AN SMALLR OF x AN y
+	O RLY?
+		YA RLY
+			VISIBLE "x <= y"
+		NO WAI
+			VISIBLE "x > y"
+	OIC
+
+	VISIBLE DIFFRINT x AN SMALLR OF x AN y
+	O RLY?
+		YA RLY
+			VISIBLE "x > y"
+		NO WAI
+			VISIBLE "x <= y"
+	OIC
+
+	VISIBLE DIFFRINT x AN BIGGR OF x AN y
+	O RLY?
+		YA RLY
+			VISIBLE "x < y"
+		NO WAI
+			VISIBLE "x >= y"
+	OIC
+
+
+
+KTHXBYE

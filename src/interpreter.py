@@ -10,6 +10,7 @@ class Interpreter:
         self.symbol_table = {}
         self.console_writer = console_writer
         self.input_writer = input_writer
+        self.IT = NoobOps()  # implicit variable for statements
 
     # gagawa ng function based sa type na provided
     def visit(self, node):
@@ -85,6 +86,7 @@ class Interpreter:
             result = left.mod_of(right)
         
         print(result.value)
+        self.IT = result  # set IT to the result
         return result.set_pos(node.pos_start, node.pos_end)
     
     def visit_StringNode(self, node):
@@ -271,6 +273,7 @@ class Interpreter:
             else:
                 raise Exception(f"Unknown boolean operation: {op_type}")
 
+        self.IT = result  # set IT
         return result.set_pos(node.pos_start, node.pos_end)
 
     def visit_BooleanInfiniteNode(self, node):
@@ -292,6 +295,7 @@ class Interpreter:
             raise Exception(f"Unknown infinite boolean operation: {op_type}")
 
         bool_result = BoolOps(result)
+        self.IT = bool_result  # set IT
         return bool_result.set_pos(node.pos_start, node.pos_end)
 
     def visit_ComparisonNode(self, node):
@@ -306,22 +310,29 @@ class Interpreter:
                 error_msg = f"Type Error: Cannot compare different types in BOTH SAEM: {type(left).__name__} and {type(right).__name__}\n{node.pos_start.fn}, line {node.pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(node.pos_start.ftxt, node.pos_start, node.pos_end)}"
                 raise Exception(error_msg)
             result = self.equality_check(left, right)
-            return BoolOps(result).set_pos(node.pos_start, node.pos_end)
+            bool_result = BoolOps(result)
+            self.IT = bool_result
+            return bool_result.set_pos(node.pos_start, node.pos_end)
         elif op_type == "DIFFRINT":
             # Inequality comparison
             if type(left) != type(right):
                 error_msg = f"Type Error: Cannot compare different types in DIFFRINT: {type(left).__name__} and {type(right).__name__}\n{node.pos_start.fn}, line {node.pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(node.pos_start.ftxt, node.pos_start, node.pos_end)}"
                 raise Exception(error_msg)
             result = not self.equality_check(left, right)
-            return BoolOps(result).set_pos(node.pos_start, node.pos_end)
+            bool_result = BoolOps(result)
+            self.IT = bool_result
+            return bool_result.set_pos(node.pos_start, node.pos_end)
         elif op_type == "BIGGR OF":
             # Maximum operation
-            return self.max_operation(left, right, node.pos_start, node.pos_end)
+            result = self.max_operation(left, right, node.pos_start, node.pos_end)
         elif op_type == "SMALLR OF":
             # Minimum operation
-            return self.min_operation(left, right, node.pos_start, node.pos_end)
+            result = self.min_operation(left, right, node.pos_start, node.pos_end)
         else:
             raise Exception(f"Unknown comparison operation: {op_type}")
+
+        self.IT = result  # set IT
+        return result
 
     def equality_check(self, left, right):
         if type(left) == type(right):
@@ -374,3 +385,11 @@ class Interpreter:
                 return result.set_pos(pos_start, pos_end)
         except Exception as e:
             error_msg = self.format_detailed_error(pos_start, pos_end, "Runtime Error", f"Error in SMALLR OF operation: {e}")
+
+    def visit_IfNode(self, node):
+        if self.to_bool(self.IT):
+            for stmt in node.if_statements:
+                self.visit(stmt)
+        else:
+            for stmt in node.else_statements:
+                self.visit(stmt)
