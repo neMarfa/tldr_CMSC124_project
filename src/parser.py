@@ -172,13 +172,13 @@ class VarDeclNode:
         return f'(I HAS A, {self.identifier_tok})'
 
 class GimmehNode:
-    def __init__(self, keyword, varident):
+    def __init__(self, keyword, varident, val):
         self.keyword_tok = keyword
         self.varident = varident
         self.pos_start = keyword.pos_start
         self.pos_end = varident.pos_end
     
-    def __repr__(self):
+    def __rzepr__(self):
         return f'({self.keyword_tok}, {self.varident})'
 
 
@@ -889,13 +889,13 @@ class Parser:
         res = ParserResult()
         tok = self.current_tok
         res.register(self.advance())
-        var = self.current_tok
+        varident = self.current_tok
 
-        if var.type != "varident":
-            return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected variable identifier "))
+        if varident.type != "varident":
+            return res.failure(InvalidSyntaxError(varident.pos_start, varident.pos_end, "Expected variable identifier "))
         res.register(self.advance())
 
-        return res.success(GimmehNode(tok, var))
+        return res.success(GimmehNode(tok, varident, varident.value))
         
 
 # used for the loop_declaration part

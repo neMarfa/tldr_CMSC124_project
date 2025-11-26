@@ -1,5 +1,7 @@
 from parser import *
 from values import *
+import lexer
+from constants import *
 import string_with_arrows
 
 
@@ -48,6 +50,10 @@ class Interpreter:
         operand = node.op_tok.value
 
         if isinstance(left.value, str):
+            if left.value not in self.symbol_table:
+                raise Exception(f"Cannot assign to undeclared variable '{var_name}'")
+        
+
             stored = self.symbol_table[left.value]
             if isinstance(stored.value, int) or isinstance(stored.value, float):
                 left = stored
@@ -56,6 +62,9 @@ class Interpreter:
                 raise Exception(error_msg)
         
         if isinstance(right.value, str):
+            if right.value not in self.symbol_table:
+                raise Exception(f"Cannot assign to undeclared variable '{var_name}'")
+        
             stored = self.symbol_table[right.value]
 
             if isinstance(stored.value, int) or isinstance(stored.value, float):
@@ -83,6 +92,7 @@ class Interpreter:
     
     def visit_IdentifierNode(self, node):
         var_name = node.tok.value
+        print(var_name)
         if var_name not in self.symbol_table:
             raise Exception(f"Variable '{var_name}' is not defined.")
         return self.symbol_table[var_name]
@@ -113,6 +123,7 @@ class Interpreter:
             raise Exception(f"Cannot assign to undeclared variable '{var_name}'")
         
         value = self.visit(node.value_node)
+
         self.symbol_table[var_name] = value
         return value
     
@@ -127,11 +138,19 @@ class Interpreter:
     # for user input
     # TODO:add value node
     def visit_GimmehNode(self, node):
-        var_name = node.varident
-        
-        value = self.input_writer()
-        self.symbol_table[var_name] = value
+        var_name = node.varident.value
 
+
+        value = self.input_writer()
+
+        print(type(node.varident.pos_end))
+
+        string_tok = lexer.Token(TK_STRING, value, node.varident.pos_end, node.varident.pos_end)
+        string = StringNode(string_tok)
+        visited = self.visit_StringNode(string)
+
+        self.symbol_table[var_name] = visited
+        
         return value
 
     # handles typecast IS NOW A
@@ -151,7 +170,7 @@ class Interpreter:
     def visit_PrintNode(self, node):
         output = []
         
-        # eval each expression
+        # eval each expression 
         for expr in node.expressions:
             value = self.visit(expr)
             output.append(str(value.value))
