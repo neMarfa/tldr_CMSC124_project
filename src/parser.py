@@ -1176,30 +1176,78 @@ class Parser:
 #  Handles the entire switch statement
     def switch_case(self):
         res = ParserResult()
-        start = self.current_tok
-        res.register(self.advance())
+        wtf_tok = self.current_tok
+        res.register(self.advance())  # skip WTF?
 
         if self.current_tok.type != TK_NEWLINE:
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after WTF?"))
 
-        statements = []
-        res.register(self.advance())
+        res.register(self.advance())  # skip newline
+
+        # parse cases until OIC
+        cases = []
 
         while self.current_tok.value != "OIC":
-            err = self.switch_keywords(statements)
-            if err != None: return err
+            if self.current_tok.value == "OMG":
+                # parse OMG
+                omg_tok = self.current_tok
+                res.register(self.advance())
 
-            if self.current_tok.value == "OIC":
-                if self.previous_tok.type != TK_NEWLINE:
-                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
-                break
+                value_tok = self.current_tok
+                # check if literal
+                if value_tok.type not in (TK_INT, TK_FLOAT, TK_STRING, TK_BOOL):
+                    return res.failure(InvalidSyntaxError(value_tok.pos_start, value_tok.pos_end, "Expected value literal (NUMBR, NUMBAR, YARN, TROOF) after OMG - "))
 
-            if self.current_tok.value == "KTHXBYE":
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected WTF? Delimiter 'OIC' " ))
-        
-        end = self.current_tok
+                res.register(self.advance())
 
-        return res.success(SwitchCaseNode(start, statements, end))
+                if self.current_tok.type == TK_NEWLINE:
+                   res.register(self.advance())
+
+                inner_statements = []
+                while self.current_tok.value not in ("OMG", "OMGWTF", "OIC"):
+                    err = self.statement_section(inner_statements)
+                    if err != None: return err
+
+                    while self.current_tok.type == TK_NEWLINE:
+                        res.register(self.advance())
+
+                cases.append(SwitchOMGNode(omg_tok, value_tok, inner_statements))
+
+            elif self.current_tok.value == "OMGWTF":
+                # parse OMGWTF
+                omgwtf_tok = self.current_tok
+                res.register(self.advance())
+
+                if self.current_tok.type != TK_NEWLINE:
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after OMGWTF - "))
+
+                res.register(self.advance())
+
+                inner_statements = []
+                while self.current_tok.value != "OIC":
+                    err = self.statement_section(inner_statements)
+                    if err != None: return err
+
+                    while self.current_tok.type == TK_NEWLINE:
+                        res.register(self.advance())
+
+                cases.append(SwitchOMGWTFNode(omgwtf_tok, inner_statements))
+
+                # expect OIC after default
+                if self.current_tok.value == "OIC":
+                    oic_tok = self.current_tok
+                    res.register(self.advance())
+                    return res.success(SwitchCaseNode(wtf_tok, cases, oic_tok))
+                else:
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected OIC after OMGWTF - "))
+
+            else:
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected OMG, OMGWTF, or OIC in switch-case - "))
+
+        # if end without OMGWTF
+        oic_tok = self.current_tok
+        res.register(self.advance())
+        return res.success(SwitchCaseNode(wtf_tok, cases, oic_tok))
 
 # Handles function definition
     def function_definition(self):
