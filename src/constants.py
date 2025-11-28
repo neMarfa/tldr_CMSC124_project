@@ -14,7 +14,7 @@ LETTERS_DIGITS = LETTERS+DIGITS+SPECIAL
 # TOKENS
 #################################
 
-arithmetic = ["SUM OF", "DIFF OF", "PRODUKT OF", "MOD OF", "QUOSHUNT OF"]
+arithmetic = ["SUM OF", "DIFF OF", "PRODUKT OF", "MOD OF", "QUOSHUNT OF","BIGGR OF", "SMALLR OF"]
 comparison = ["BIGGR OF", "SMALLR OF"]
 function_specific = ["HOW IZ I", "I IZ"]
 loop_specific = ["IM IN YR", "IM OUTTA YR"]

@@ -118,6 +118,12 @@ class Interpreter:
             result = left.quoshunt_of(right)
         elif operand == "MOD OF":
             result = left.mod_of(right)
+        elif operand == "BIGGR OF":
+            # Maximum operation
+            result = self.max_operation(left, right, node.pos_start, node.pos_end)
+        elif operand == "SMALLR OF":
+            # Minimum operation
+            result = self.min_operation(left, right, node.pos_start, node.pos_end)
         
         print(result.value)
         self.IT = result  # set IT to the result
