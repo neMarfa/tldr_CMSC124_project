@@ -252,6 +252,14 @@ class LOLCodeGUI:
                 display_value = var_value.value if hasattr(var_value, 'value') else str(var_value)
                 self.symbol_table[var_name] = display_value  # update internal dict
                 self.symbol_tree.insert("", tk.END, values=(var_name, display_value))  # add to tree
+
+            # TODO: delete if not needed
+            # Add IT to symbol table display
+            if hasattr(interpreter, 'IT'):
+                display_value = interpreter.IT.value if hasattr(interpreter.IT, 'value') else str(interpreter.IT)
+                self.symbol_table['IT'] = display_value
+                self.symbol_tree.insert("", tk.END, values=('IT', display_value))
+
                 
         except Exception as e:
             error_msg = str(e)
