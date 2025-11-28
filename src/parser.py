@@ -114,6 +114,7 @@ class LoopNode:
 
 class BreakNode:
     def __init__(self, tok, pos_start, pos_end):
+        self.tok = tok
         self.pos_start = pos_start
         self.pos_end = pos_end
     
@@ -522,6 +523,11 @@ class Parser:
             switch = self.switch_case()
             if switch.error: return switch
             statements.append(switch.node)
+
+        elif self.current_tok.value == "GTFO":
+            tok = self.current_tok
+            res.register(self.advance())
+            statements.append(BreakNode(tok, tok.pos_start, tok.pos_end))
 
         elif self.current_tok.value == "O RLY?":
             if_stmt = self.if_statement()
@@ -1200,6 +1206,15 @@ class Parser:
 
                 res.register(self.advance())
 
+                if value_tok.type == TK_INT:
+                    value_node = NumberNode(value_tok)
+                elif value_tok.type == TK_FLOAT:
+                    value_node = NumberNode(value_tok)
+                elif value_tok.type == TK_STRING:
+                    value_node = StringNode(value_tok)
+                elif value_tok.type == TK_BOOL:
+                    value_node = BoolNode(value_tok)
+
                 if self.current_tok.type == TK_NEWLINE:
                    res.register(self.advance())
 
@@ -1211,7 +1226,7 @@ class Parser:
                     while self.current_tok.type == TK_NEWLINE:
                         res.register(self.advance())
 
-                cases.append(SwitchOMGNode(omg_tok, value_tok, inner_statements))
+                cases.append(SwitchOMGNode(omg_tok, value_node, inner_statements))
 
             elif self.current_tok.value == "OMGWTF":
                 # parse OMGWTF

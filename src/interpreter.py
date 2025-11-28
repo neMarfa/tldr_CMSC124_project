@@ -434,6 +434,25 @@ class Interpreter:
             for stmt in node.else_statements:
                 self.visit(stmt)
 
+    def visit_SwitchCaseNode(self, node):
+        matched = False
+        for case in node.statements:
+            if isinstance(case, SwitchOMGNode):
+                expected_value = self.visit(case.expression)
+                if self.equality_check(self.IT, expected_value):
+                    matched = True
+                    for stmt in case.code:
+                        self.visit(stmt)
+                    break
+            elif isinstance(case, SwitchOMGWTFNode):
+                if not matched:
+                    for stmt in case.code:
+                        self.visit(stmt)
+                    break
+
+    def visit_BreakNode(self, node):
+        pass
+
     def visit_LoopNode(self, node):
         variable = node.start.varident
         operation = node.start.operation.value
