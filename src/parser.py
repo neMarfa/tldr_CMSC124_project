@@ -373,7 +373,8 @@ class Parser:
     def statements(self):
         res = ParserResult()
         tok = self.current_tok
-        final_tok = self.tokens[-1]
+        final_tok = self.tokens[-2]
+        newline_check = self.tokens[-3]
         pos_start = self.current_tok.pos_start.copy()
         statements = []
         
@@ -391,6 +392,9 @@ class Parser:
         if final_tok.value != "KTHXBYE":
             return res.failure(InvalidSyntaxError(final_tok.pos_start, final_tok.pos_end, "Expected 'KTHXBYE' "))
         
+        if newline_check.type != TK_NEWLINE:
+            return res.failure(InvalidSyntaxError(newline_check.pos_start, newline_check.pos_end, "Expected '\\n' "))
+                
         # skip initial newlines
         while self.current_tok.type == TK_NEWLINE:
             res.register(self.advance())
@@ -408,22 +412,37 @@ class Parser:
         while self.current_tok.type == TK_NEWLINE:
             res.register(self.advance())
 
+        KTHXBYE_count = 0
         # parse statements until we hit KTHXBYE
-        while self.current_tok.value != "KTHXBYE":
+        while self.current_tok.type != TK_EOF:
+            print(self.current_tok)
             err = self.statement_section(statements)
             if err != None: return err
             
-            if self.current_tok.value == "KTHXBYE":
-                if self.previous_tok.type != TK_NEWLINE:
-                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
-                break
-            
+            if self.current_tok.value == "HAI":
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Unexpected 'HAI' "))
+
+
             # skip newlines between statements
             while self.current_tok.type == TK_NEWLINE:
                 res.register(self.advance())
                 if self.current_tok.value == "KTHXBYE":
+                    KTHXBYE_count += 1
+                    res.register(self.advance())
+            
+                if self.current_tok.value == "EOF":
                     break
-            # res.register(self.advance())
+            
+            if self.current_tok.value == "KTHXBYE":
+                res.register(self.advance())
+                KTHXBYE_count += 1
+            
+            if self.current_tok.type == TK_EOF:
+                break
+            
+        if KTHXBYE_count > 1:
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "UNEXPECTED 'KTHXBYE' "))
+
 
         return res.success(statements)
 

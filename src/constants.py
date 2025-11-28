@@ -19,7 +19,7 @@ comparison = ["BIGGR OF", "SMALLR OF"]
 function_specific = ["HOW IZ I", "I IZ"]
 loop_specific = ["IM IN YR", "IM OUTTA YR"]
 TK_NEWLINE = "Newline"
-
+TK_EOF = "End of File"
 TK_FUNC_IDENTIFIER = "Function Name"
 TK_NEG = "Negation Symbol"
 TK_INT = "NUMBR"
