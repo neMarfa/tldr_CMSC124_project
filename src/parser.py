@@ -528,7 +528,15 @@ class Parser:
             if if_stmt.error: return if_stmt
             statements.append(if_stmt.node)
 
-        return None
+        elif self.current_tok.value == "YA RLY":
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "YA RLY must be within O RLY? block - "))
+
+        elif self.current_tok.value == "NO WAI":
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "NO WAI must be within O RLY? block - "))
+
+        elif self.current_tok.value == "OIC":
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "OIC must be within O RLY? or WTF? block - "))
+        
     # ========== END OF REPLACED METHODS ==========
 
 
@@ -1310,7 +1318,7 @@ class Parser:
         res.register(self.advance())  # skip O RLY?
 
         if self.current_tok.type != TK_NEWLINE:
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after O RLY?"))
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after O RLY? - "))
 
         res.register(self.advance())  # skip newline
 
@@ -1319,12 +1327,12 @@ class Parser:
 
         # expect YA RLY
         if self.current_tok.value != "YA RLY":
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected YA RLY"))
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected YA RLY - "))
 
         res.register(self.advance())  # skip YA RLY
 
         if self.current_tok.type != TK_NEWLINE:
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after YA RLY"))
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after YA RLY - "))
 
         res.register(self.advance())  # skip newline
 
@@ -1342,7 +1350,7 @@ class Parser:
             res.register(self.advance())  # skip NO WAI
 
             if self.current_tok.type != TK_NEWLINE:
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after NO WAI"))
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after NO WAI - "))
 
             res.register(self.advance())  # skip newline
 
@@ -1350,6 +1358,9 @@ class Parser:
             else_statements = []
 
             while self.current_tok.value != "OIC":
+                if self.current_tok.value == "O RLY?":
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Missing OIC to close if-else block - "))
+
                 err = self.statement_section(else_statements)
                 if err != None: return err
 
@@ -1362,7 +1373,7 @@ class Parser:
 
                 return res.success(IfNode(if_statements, else_statements, orly_tok.pos_start, oic_tok.pos_end))
             else:
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected OIC"))
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected OIC - "))
 
         elif self.current_tok.value == "OIC":
             oic_tok = self.current_tok
@@ -1370,4 +1381,4 @@ class Parser:
 
             return res.success(IfNode(if_statements, [], orly_tok.pos_start, oic_tok.pos_end))
         else:
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected NO WAI or OIC"))
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected NO WAI or OIC - "))
