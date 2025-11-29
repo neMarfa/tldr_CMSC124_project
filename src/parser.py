@@ -365,7 +365,7 @@ class Parser:
 
     # TODO:make possible not only for arithmetic operations
     def parse(self):
-        print(self.tokens)
+        # print(self.tokens)
         res = self.statements()
         return res  
 
@@ -416,7 +416,7 @@ class Parser:
         KTHXBYE_count = 0
         # parse statements until we hit KTHXBYE
         while self.current_tok.type != TK_EOF:
-            print(self.current_tok)
+            # print(self.current_tok)
             err = self.statement_section(statements)
             if err != None: return err
             
@@ -872,10 +872,10 @@ class Parser:
         if res.error: return res
         
         # expect A
-        if self.current_tok.value != "A":
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'A'"))
-        
-        res.register(self.advance())
+        if self.current_tok.value == "A":
+            # return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'A'"))
+            res.register(self.advance())
+        # res.register(self.advance())
         
         # expect type (NUMBR, NUMBAR, YARN, TROOF, NOOB)
         type_tok = self.current_tok
@@ -911,6 +911,26 @@ class Parser:
         
         return res.success(VarTypeCastNode(var_tok, is_now_a_tok, type_tok))
 
+    def typecast_r_maek(self):
+        res = ParserResult()
+        tok = self.current_tok
+
+        if tok.value != "MAEK":
+            return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected 'MAEK'"))
+
+        res.register(self.advance())
+        expr = res.register(self.expression())
+        if res.error:
+            return res
+
+        type_tok = self.current_tok
+        if type_tok.value not in ("NUMBR", "NUMBAR", "YARN", "NOOB", "TROOF"):
+            return res.failure(InvalidSyntaxError(type_tok.pos_start, type_tok.pos_end, "Expected 'MAEK'"))
+        
+        res.register(self.advance())
+        return res.success(TypeCastNode(tok, expr, type_tok))
+
+
     def assignment(self):
         res = ParserResult()
         tok = self.current_tok
@@ -927,9 +947,16 @@ class Parser:
         
         res.register(self.advance())
         
-        # parse value expression
-        value = res.register(self.expression())
-        if res.error: return res
+        # check if it's R MAEK
+        if self.current_tok.value == "MAEK":
+            typecast = res.register(self.typecast_r_maek())
+            if res.error:
+                return res
+            return res.success(AssignmentNode(tok, r_tok, typecast))
+        else:
+            # regular assignment 
+            value = res.register(self.expression())
+            if res.error: return res
         
         return res.success(AssignmentNode(tok, r_tok, value))
 

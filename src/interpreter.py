@@ -215,7 +215,10 @@ class Interpreter:
         # eval each expression 
         for expr in node.expressions:
             value = self.visit(expr)
-            output.append(str(value.value))
+            if isinstance(value, StringOps):
+                output.append(f'"{value.value}"')  
+            else:
+                output.append(str(value.value))
         
         # print spaces bet
         result = " ".join(output)

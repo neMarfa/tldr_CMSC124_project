@@ -1,6 +1,5 @@
-BTW Printing test (w multiple expressions)
-
 HAI
+BTW Printing test (w multiple expressions)
 I HAS A age ITZ 25
 I HAS A name ITZ "Bob"
 VISIBLE "Name:" AN name AN "Age:" AN age

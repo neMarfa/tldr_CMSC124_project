@@ -146,6 +146,7 @@ class LOLCodeGUI:
         self.symbol_tree.column("Identifier", width=120, anchor="w")
         self.symbol_tree.column("Value", width=250, anchor="w")
         self.symbol_tree.pack(fill=tk.BOTH, expand=True)
+        self.symbol_tree.bind("<<TreeviewSelect>>", self.symbol_table_select)
         symbol_scroll.config(command=self.symbol_tree.yview)
         #------------------------------------------------------------------------------------------------------------
         # bottom container 
@@ -167,6 +168,43 @@ class LOLCodeGUI:
         self.console.insert("2.0", "=" * 50 + "\n")
         self.console.config(state=tk.DISABLED)
     #------------------------------------------------------------------------------------------------------------
+    # for debugging purposes onlyyy
+    def symbol_table_select(self, event):
+        var = self.symbol_tree.selection()
+
+        if not var:
+            return
+        
+        item = self.symbol_tree.item(var[0])
+        values = item['values']
+        var_name = values[0]  # identifier
+        
+        print(f"\nClicked: {var_name}")
+        if hasattr(self, 'current_interpreter') and var_name in self.current_interpreter.symbol_table:
+            actual_value_obj = self.current_interpreter.symbol_table[var_name]
+            lolcode_type = self.get_type_name(actual_value_obj)
+            print(f"LOLCode type: {lolcode_type}")  
+            
+    # for debugging purposes onlyyy
+    def get_type_name(self, var_value):
+        class_name = type(var_value).__name__
+        
+        if class_name == 'NumOps':
+            if isinstance(var_value.value, int):
+                return 'NUMBR'
+            elif isinstance(var_value.value, float):
+                return 'NUMBAR'
+            else:
+                return 'NUMBR/NUMBAR'
+        elif class_name == 'StringOps':
+            return 'YARN'
+        elif class_name == 'BoolOps':
+            return 'TROOF'
+        elif class_name == 'NoobOps':
+            return 'NOOB'
+        else:
+            return 'Unknown'
+        
     def open_file(self):
         filename = filedialog.askopenfilename(
             title="Select LOLCode File",
@@ -224,16 +262,10 @@ class LOLCodeGUI:
         # self.write_to_console(f"Parse Tree: {parse_result.node}\n")       # uncomment for checking
 
         # ========== run semantic analyzer (interpreter) ==========
-        # Debug: Print the parsed statements
-        print("\n=== PARSED STATEMENTS ===")
-        for i, stmt in enumerate(parse_result.node):
-            print(f"Statement {i}: {type(stmt).__name__}")
-            if hasattr(stmt, '__repr__'):
-                print(f"  Details: {repr(stmt)}")
-        print("=========================\n")
+
         from interpreter import Interpreter
         interpreter = Interpreter(console_writer=self.write_to_console, input_writer=self.obtain_console_input)
-        
+        self.current_interpreter = interpreter  
         try:
             # execute each statement
             for stmt in parse_result.node:

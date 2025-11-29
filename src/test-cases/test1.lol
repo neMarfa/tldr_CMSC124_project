@@ -1,4 +1,3 @@
-BTW Basic Variable Declaration
 HAI
 WAZZUP
 I HAS A x ITZ 5

@@ -1,6 +1,5 @@
-BTW assignment update
-
 HAI
+BTW assignment update
 I HAS A x ITZ 10
 VISIBLE "Initial x:" AN x
 x R 20
