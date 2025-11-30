@@ -177,6 +177,26 @@ class Interpreter:
          result = self.cast_value(value, desired_type)
          return result
     
+    def visit_ConcatNode(self, node):
+        result = []
+        for expr in node.expressions:
+            value = self.visit(expr)
+            
+            if isinstance(value, NumOps):
+                result.append(str(value.value))
+            elif isinstance(value, StringOps):
+                result.append(value.value)
+            elif isinstance(value, BoolOps):
+                result.append("WIN" if value.value else "FAIL")
+            elif isinstance(value, NoobOps):
+                result.append("")
+            else:
+                result.append(str(value.value))
+    
+        joined = "".join(result)
+        
+        return StringOps(joined).set_pos(node.pos_start, node.pos_end)
+    
     # for user input
     # TODO:add value node
     def visit_GimmehNode(self, node):

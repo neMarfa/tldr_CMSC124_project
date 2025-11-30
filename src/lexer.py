@@ -82,6 +82,9 @@ class Lexer:
                 if isinstance(result, tuple) and result[1] is not None:  # Error case
                     return [], result[1]
                 tokens.extend(result)
+            elif self.current_char == '!':
+                tokens.append(Token(TK_EOS, '!', pos_start=self.pos.copy()))
+                self.advance()
             elif self.current_char in LETTERS: # If it contains any letters check the format if it is a keyword otherwise it is just a variable
                 result = self.make_identifier(tokens)
                 

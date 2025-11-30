@@ -35,6 +35,7 @@ TK_VISIBLE = "Output Keyword"
 TK_VARDECL = "Variable Declaration"  
 TK_VARASSIGN = "Variable Assignment"  
 TK_IDENTIFIER = "varident"  
+TK_EOS = "EOS"
 
 KEYWORDS = {
     'NUMBR' : "NUMBR Type Literal",

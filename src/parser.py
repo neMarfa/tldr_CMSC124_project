@@ -170,6 +170,18 @@ class VarDeclNode:
             return f'(I HAS A, {self.identifier_tok}, {self.assignment_tok}, {self.value_node})'
         return f'(I HAS A, {self.identifier_tok})'
 
+class ConcatNode:
+    def __init__(self, keyword, expressions):
+        self.keyword = keyword
+        self.expressions = expressions
+        self.pos_start = keyword.pos_start
+        if expressions:
+            self.pos_end = expressions[-1].pos_end
+        else:
+            self.pos_end = keyword.pos_end
+    def __repr__(self):
+        return f'(SMOOSH, {", ".join(str(expr) for expr in self.expressions)})'
+
 class GimmehNode:
     def __init__(self, keyword, varident, val):
         self.keyword_tok = keyword
@@ -498,6 +510,12 @@ class Parser:
             func = self.function()
             if func.error: return func
             statements.append(func.node)
+        
+        elif self.current_tok.value == "SMOOSH" and self.current_tok.type == "Concatenation Keyword":
+            concat = self.concat()
+            if concat.error:
+                return concat
+            statements.append(concat.node)
 
         elif self.current_tok.type == "varident":
             # try to extend and see if it's assignment (R) or typecast (IS NOW A)
@@ -858,6 +876,32 @@ class Parser:
         
         return res.success(VarDeclNode(tok, identifier_tok))
     
+    def concat(self):
+        res = ParserResult()
+        tok = self.current_tok
+
+        if tok.type != "Concatenation Keyword":
+            return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected 'SMOOSH'"))
+        
+        res.register(self.advance())
+        
+        expressions = []
+        
+        expr = res.register(self.expression())
+        if res.error: 
+            return res
+        expressions.append(expr)
+        
+        # basically extends as long as there is a delimiter in the current statement
+        while self.current_tok and self.current_tok.type == TK_DELIMITER:   
+            res.register(self.advance())
+            expr = res.register(self.expression())
+            if res.error: 
+                return res
+            expressions.append(expr)
+        
+        return res.success(ConcatNode(tok, expressions))
+
     def typecast_maek(self):
         res = ParserResult()
         maek_tok = self.current_tok
@@ -1093,9 +1137,6 @@ class Parser:
 
 
     def expression(self):
-        """
-        Parses any expression (literals, identifiers, arithmetic, comparisons, booleans, etc.)
-        """
         res = ParserResult()
         tok = self.current_tok
 
@@ -1105,6 +1146,9 @@ class Parser:
 
         if tok.value == "MAEK":
             return self.typecast_maek()
+        
+        if tok.type == "Concatenation Keyword":  # SMOOSH
+            return self.concat()
 
         # Check for boolean operators first (highest precedence)
         if tok.value in ("NOT", "ALL OF", "ANY OF", "BOTH OF", "EITHER OF", "WON OF"):
