@@ -143,7 +143,7 @@ class PrintNode:
     def __init__(self, keyword_tok, expressions):
         self.keyword_tok = keyword_tok
         self.expressions = expressions
-    
+
     def __repr__(self):
         return f'(VISIBLE, {", ".join(str(expr) for expr in self.expressions)})'
     
@@ -780,7 +780,6 @@ class Parser:
         ))
 
     def print_statement(self):
-      
         # format: VISIBLE <expression> [AN <expression>]*
         res = ParserResult()
         tok = self.current_tok
@@ -803,7 +802,19 @@ class Parser:
             if res.error: return res
             expressions.append(expr)
         
+        if self.current_tok.type != TK_EOS:
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '!' at end of VISIBLE statement"))
+        
+        res.register(self.advance())
+
+        if self.current_tok.type != TK_NEWLINE and self.current_tok.type != TK_EOF:
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
+        
+        if self.current_tok.type == TK_NEWLINE:
+            res.register(self.advance())
+
         return res.success(PrintNode(tok, expressions))
+        # return res.success(PrintNode(tok, expressions))
 
     def var_decl_block(self):
         res = ParserResult()
@@ -1147,7 +1158,7 @@ class Parser:
         if tok.value == "MAEK":
             return self.typecast_maek()
         
-        if tok.type == "Concatenation Keyword":  # SMOOSH
+        if tok.type == "Concatenation Keyword":  
             return self.concat()
 
         # Check for boolean operators first (highest precedence)

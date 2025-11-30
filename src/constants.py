@@ -97,7 +97,8 @@ KEYWORDS = {
     "GTFO": "Break Keyword",
     "MKAY": "Operation End",
     "WIN" : "Boolean Literal (True)",
-    "FAIL" : "Boolean Literal (False)"
+    "FAIL" : "Boolean Literal (False)",
+    "!" : "EOS"
 }
 
 # for multi-word keywords
