@@ -140,12 +140,17 @@ class StringNode:
         return f'YARN:{self.tok}'
     
 class PrintNode: 
-    def __init__(self, keyword_tok, expressions):
+    def __init__(self, keyword_tok, expressions, eos = False):
         self.keyword_tok = keyword_tok
         self.expressions = expressions
+        self.eos = eos
 
     def __repr__(self):
-        return f'(VISIBLE, {", ".join(str(expr) for expr in self.expressions)})'
+        if self.eos:
+            mark = "!"
+        else:
+            ""
+        return f'(VISIBLE, {", ".join(str(expr) for expr in self.expressions)}{mark})'
     
 class VarDeclBlockNode:
     def __init__(self, wazzup_tok, declarations, buhbye_tok):
@@ -811,10 +816,10 @@ class Parser:
             if res.error: return res
             expressions.append(expr)
         
-        if self.current_tok.type != TK_EOS:
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '!' at end of VISIBLE statement"))
-        
-        res.register(self.advance())
+        suppress_newline = False
+        if self.current_tok.type == TK_EOS:
+            suppress_newline = True
+            res.register(self.advance())
 
         if self.current_tok.type != TK_NEWLINE and self.current_tok.type != TK_EOF:
             return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
@@ -822,8 +827,7 @@ class Parser:
         if self.current_tok.type == TK_NEWLINE:
             res.register(self.advance())
 
-        return res.success(PrintNode(tok, expressions))
-        # return res.success(PrintNode(tok, expressions))
+        return res.success(PrintNode(tok, expressions, suppress_newline))
 
     def var_decl_block(self):
         res = ParserResult()

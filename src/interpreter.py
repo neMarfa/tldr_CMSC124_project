@@ -246,7 +246,10 @@ class Interpreter:
         result = " ".join(output)
         
         if self.console_writer:
-            self.console_writer(result + "\n")  # gui console
+            if node.eos:
+                self.console_writer(result)  # gui console
+            else:
+                self.console_writer(result + "\n")  # gui console
         else:
             print(result)  
         
