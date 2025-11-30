@@ -6,11 +6,16 @@ import string_with_arrows
 
 
 class Interpreter:
-    def __init__(self, console_writer = None, input_writer = None):
+    def __init__(self, console_writer = None, input_writer = None, param_name = None, param_value = None):
         self.symbol_table = {}
         self.console_writer = console_writer
         self.input_writer = input_writer
         self.IT = NoobOps()  # implicit variable for statements
+        if param_name is not None:
+            for i in range(len(param_name)): 
+                self.symbol_table[param_name[i]] =  param_value[i]
+            
+
 
     # gagawa ng function based sa type na provided
     def visit(self, node):
@@ -235,10 +240,7 @@ class Interpreter:
         # eval each expression 
         for expr in node.expressions:
             value = self.visit(expr)
-            if isinstance(value, StringOps):
-                output.append(f'"{value.value}"')  
-            else:
-                output.append(str(value.value))
+            output.append(str(value.value))
         
         # print spaces bet
         result = " ".join(output)
@@ -476,11 +478,57 @@ class Interpreter:
     def visit_BreakNode(self, node):
         pass
 
+    # Responsible for function declaration and assignment to the symbol table
+    def visit_FunctionNode(self, node):
+        function_name = node.start.node.function_name.value
+        body = node.body
+        parameters = [param_name.value for param_name in node.start.node.parameters]
+        func_value = Function(function_name, body, parameters)
+        self.symbol_table[function_name] = func_value
+        return func_value
+    """
+    creates another interpreter which contains the symbols provided and are not able to access values
+    from outside its scope.
+    """
+    def visit_Function(self, node, parameters):
+        function_value = self.symbol_table[node.name]
+        parameter_names = function_value.parameters
+        if len(parameters) > len(parameter_names):
+            error_msg = f"RUNTIME ERROR: too many arguments provided "
+            raise Exception(error_msg) 
+
+        if len(parameters) < len(parameter_names):
+            error_msg = f"RUNTIME ERROR: too few arguments provided "
+            raise Exception(error_msg) 
+
+        parameter_values = parameters
+
+        # For cases where expressions will be used so that they would be calculated
+        for i in range(len(parameter_values)):
+            parameter_values[i] = self.visit(parameter_values[i])
+
+        func_inter = Interpreter(console_writer = self.console_writer, input_writer = self.input_writer, param_name = parameter_names, param_value = parameter_values)
+
+        # calculating each function
+        for statement in node.body:
+            func_inter.visit(statement)
+
+        return parameter_values
+
+    # Handles function calls
+    def visit_CallNode(self, node):
+        parameters = node.parameters
+
+        if node.function_name.value not in self.symbol_table:
+            raise Exception(f"Cannot call to undeclared function '{node.function_name.value}'")
+
+        called = self.visit_Function(self.symbol_table[node.function_name.value], parameters)
+        # called = called.copy()
+
     def visit_LoopNode(self, node):
         variable = node.start.varident
         operation = node.start.operation.value
         clause = node.start.clause.value
-
 
         if variable.value not in self.symbol_table:
             raise Exception(f"Cannot proceed with undeclared variable '{variable.value}'")
@@ -502,6 +550,7 @@ class Interpreter:
             else:
                 self.symbol_table[variable.value].value -= 1
 
+            # case when infinite loops occur
             if count == 9999:
                 error_msg = f"Infinite Loop on loop {node.start.label}"
                 raise Exception(error_msg)

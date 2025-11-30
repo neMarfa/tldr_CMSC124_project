@@ -92,3 +92,13 @@ class BoolOps:
 
     def __repr__(self):
         return f"WIN" if self.value else f"FAIL"
+
+# This is just a function class that will be used for traversal
+class Function():
+    def __init__(self, name, body, parameters):
+        self.name = name
+        self.body = body
+        self.parameters = parameters
+
+    def __repr__(self):
+        return f"<function {self.name}>"

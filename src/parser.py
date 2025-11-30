@@ -304,10 +304,10 @@ class IfNode:
 
 # TODO: Update pos_end
 class FunctionDefinitionNode:
-    def __init__(self, op_tok, function_name, paramters):
+    def __init__(self, op_tok, function_name, parameters):
         self.op_tok = op_tok
         self.function_name = function_name
-        self.paramters = paramters
+        self.parameters = parameters
 
         self.pos_start = op_tok.pos_start
         self.pos_end = function_name.pos_end
@@ -323,10 +323,10 @@ class FunctionNode:
 
 
 class CallNode:
-    def __init__(self, op_tok, function_name, paramters):
+    def __init__(self, op_tok, function_name, parameters):
         self.op_tok = op_tok
         self.function_name = function_name
-        self.paramters = paramters
+        self.parameters = parameters
 
         self.pos_start = op_tok.pos_start
         self.pos_end = function_name.pos_end
@@ -560,6 +560,15 @@ class Parser:
 
         elif self.current_tok.value == "OIC":
             return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "OIC must be within O RLY? or WTF? block - "))
+        
+        elif self.current_tok.value == "IM OUTTA YR":
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "IM OUTTA YR must close a IM IN YR block - "))
+
+        elif self.current_tok.value == "IF U SAY SO":
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "IF U SAY SO must close a HOW IZ I block - "))
+
+        elif self.current_tok.value == "MKAY":
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "MKAY must pair with an expression or a function call - "))
         
     # ========== END OF REPLACED METHODS ==========
 
@@ -1125,7 +1134,10 @@ class Parser:
         while self.current_tok.value != "IM OUTTA YR":
             
             err = self.statement_section(statements)
-            if err != None: return err
+            if err != None: 
+                if err.error.details == "IM OUTTA YR must close a IM IN YR block - ":
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Statements Before Closing Loop "))
+                return err
 
             if self.current_tok.value == "IM OUTTA YR":
                 if self.previous_tok.type != TK_NEWLINE:
@@ -1366,23 +1378,40 @@ class Parser:
 
         params = []
 
-        # loops through all the paramters will stope once YR is no longer seen
-        while self.current_tok.value == "YR":
-            print("error in params")
-            res.register(self.advance())
 
-            # case for multi parameters
-            if self.current_tok.value == "AN":
-                res.register(self.advance())
-                if self.current_tok.value != "YR":
-                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'YR' "))
-                res.register(self.advance())
+        if self.current_tok.value == "YR":
+            res.register(self.advance())
 
             if self.current_tok.type != "varident":
                 return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Parameter "))
+            
             params.append(self.current_tok)
             res.register(self.advance())
 
+
+            # loops through all the paramters will stope once YR is no longer seen
+            while self.current_tok.value == "AN":
+                res.register(self.advance())
+
+                # case for multi parameters
+                
+                if self.current_tok.value != "YR":
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'YR' "))
+                
+                res.register(self.advance())
+
+                if self.current_tok.type != "varident":
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Parameter "))
+                
+                params.append(self.current_tok)
+
+                res.register(self.advance())
+                print(self.current_tok)
+              
+        if self.current_tok.type != TK_NEWLINE:
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
+        
+        print(params)
         return res.success(FunctionDefinitionNode(start, func_name, params))
 
     # The function itself
@@ -1390,26 +1419,31 @@ class Parser:
         res = ParserResult()
 
         start = self.function_definition()
-
+        if start.error: return start
         statements = []
-        res.register(self.advance())
-
         # while delimeter has not been seen
         while self.current_tok.value != "IF U SAY SO":
-            res.register(self.advance())
-            print(self.current_tok)
+
             err = self.statement_section(statements)
-            if err != None: return err
+            if err != None: 
+                if err.error.details == "IF U SAY SO must close a HOW IZ I block - ":
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Statements Before Closing Function "))
+                return err
+
+            if self.current_tok.type == TK_EOF:
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Function Delimiter 'IF U SAY SO' " ))
+            res.register(self.advance())
 
             if self.current_tok.value == "IF U SAY SO":
+                print(self.current_tok)
+                end = self.current_tok
+
                 if self.previous_tok.type != TK_NEWLINE:
                     return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
                 break
 
-            if self.current_tok.value == "KTHXBYE":
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Function Delimiter 'IF U SAY SO' " ))
-
         end = self.current_tok
+        res.register(self.advance())
 
         return res.success(FunctionNode(start, statements, end))
     
@@ -1433,20 +1467,34 @@ class Parser:
 
         params = []
 
-        while self.current_tok.value == "YR":
+        if self.current_tok.value == "YR":
             res.register(self.advance())
 
-            expression = self.expression()
-            if expression.error: return expression
+            expr = res.register(self.expression())
+            if res.error: return res
+            
+            params.append(expr)
 
-            if self.current_tok.value == "AN":
+
+            # loops through all the paramters will stope once YR is no longer seen
+            while self.current_tok.value == "AN":
                 res.register(self.advance())
+
+                # case for multi parameters
+                
                 if self.current_tok.value != "YR":
                     return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'YR' "))
+                
+                res.register(self.advance())
 
-            params.append(self.expression)
+                expr = res.register(self.expression())
+                if res.error: return res
+                
+                params.append(expr)
 
-        print(self.current_tok)
+                print(self.current_tok)
+                
+        print(params)
         if self.current_tok.value != "MKAY":
             return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'MKAY' " ))
 
