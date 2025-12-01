@@ -189,7 +189,7 @@ Graphical user interface:
 - Real-time console output
 - File management
 
-## 👥 Team
+## Team
 
 **Course**: CMSC 124 - Programming Languages
 
