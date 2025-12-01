@@ -326,7 +326,6 @@ class FunctionNode:
         self.pos_start = start.node.pos_start
         self.pos_end = end.pos_end
 
-
 class CallNode:
     def __init__(self, op_tok, function_name, parameters):
         self.op_tok = op_tok
@@ -335,6 +334,13 @@ class CallNode:
 
         self.pos_start = op_tok.pos_start
         self.pos_end = function_name.pos_end
+
+class ReturnNode:
+    def __init__(self, expression, pos_start, pos_end):
+        self.expression = expression
+        self.pos_start = pos_start
+        self.pos_end = pos_end
+    
 #################################
 # RESULT
 #################################
@@ -511,6 +517,11 @@ class Parser:
             if call.error: return call
             statements.append(call.node)
 
+        elif self.current_tok.value == "FOUND YR":
+            ret = self.return_expressions()
+            if ret.error: return ret
+            statements.append(ret.node)
+
         elif self.current_tok.value == "HOW IZ I":
             func = self.function()
             if func.error: return func
@@ -566,11 +577,11 @@ class Parser:
         elif self.current_tok.value == "OIC":
             return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "OIC must be within O RLY? or WTF? block - "))
         
-        elif self.current_tok.value == "IM OUTTA YR":
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "IM OUTTA YR must close a IM IN YR block - "))
+        # elif self.current_tok.value == "IM OUTTA YR":
+        #     return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "IM OUTTA YR must close a IM IN YR block - "))
 
-        elif self.current_tok.value == "IF U SAY SO":
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "IF U SAY SO must close a HOW IZ I block - "))
+        # elif self.current_tok.value == "IF U SAY SO":
+        #     return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "IF U SAY SO must close a HOW IZ I block - "))
 
         elif self.current_tok.value == "MKAY":
             return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "MKAY must pair with an expression or a function call - "))
@@ -693,7 +704,7 @@ class Parser:
         res = ParserResult()
         
         # Check if it's a comparison operator (BOTH SAEM, DIFFRINT) or comparison operation (BIGGR OF, SMALLR OF)
-        if self.current_tok.value not in ("BOTH SAEM", "DIFFRINT") and self.current_tok.value not in comparison_ops:
+        if self.current_tok.value not in ("BOTH SAEM", "DIFFRINT"):
             return res.failure(InvalidSyntaxError(
                 self.current_tok.pos_start, 
                 self.current_tok.pos_end, 
@@ -1163,6 +1174,22 @@ class Parser:
         return res.success(LoopNode(start.node, listed, end.node))
 
 
+    def return_expressions(self):
+        res = ParserResult()
+        tok = self.current_tok
+        pos_start = self.current_tok.pos_start.copy()
+
+        if tok.value == "FOUND YR":
+            res.register(self.advance())
+            expr = self.expression()
+            if expr.error: return expr
+
+            return res.success(ReturnNode(expr, pos_start, self.current_tok.pos_start.copy()))
+
+        expr = res.register(self.expression())
+        if expr.error: return expr
+
+
     def expression(self):
         res = ParserResult()
         tok = self.current_tok
@@ -1182,7 +1209,7 @@ class Parser:
             return self.boolean_expr()
 
         # Check for comparison operators and operations
-        if tok.value in ("BOTH SAEM", "DIFFRINT") or tok.value in comparison_ops:
+        if tok.value in ("BOTH SAEM", "DIFFRINT"):
             return self.comparison_expr()
         
         # Check for arithmetic operations
@@ -1234,7 +1261,6 @@ class Parser:
 
                 err = self.statement_section(inner_code)
                 if err != None: return err
-
 
                 if self.current_tok.value == "OMG":
                     break

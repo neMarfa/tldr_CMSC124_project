@@ -30,4 +30,8 @@ class ExpectedCharError(Error):
 
 class InvalidSyntaxError(Error):
     def __init__(self, pos_start, pos_end, details):
-        super().__init__(pos_start, pos_end, 'Invalid Syntax', details) 
+        super().__init__(pos_start, pos_end, 'Invalid Syntax', details)
+
+class RuntimeError(Error):
+    def __init__(self, pos_start, pos_end, details):
+        super().__init__(pos_start, pos_end, '', details)    

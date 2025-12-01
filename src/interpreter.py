@@ -6,11 +6,13 @@ import string_with_arrows
 
 
 class Interpreter:
-    def __init__(self, console_writer = None, input_writer = None, param_name = None, param_value = None):
+    def __init__(self, console_writer = None, input_writer = None, param_name = None, param_value = None, isFunction = False):
         self.symbol_table = {}
         self.console_writer = console_writer
         self.input_writer = input_writer
         self.IT = NoobOps()  # implicit variable for statements
+        self.ret = NoobOps()
+        self.isFunction = isFunction
         if param_name is not None:
             for i in range(len(param_name)): 
                 self.symbol_table[param_name[i]] =  param_value[i]
@@ -48,6 +50,36 @@ class Interpreter:
         return result.set_pos(node.pos_start, node.pos_end)
 
     
+    def implicit_cast(self, var, other):
+        print(var.value)
+        if var.value not in self.symbol_table:
+            raise Exception(f"Cannot assign to undeclared variable '{var.value}'")
+    
+        stored = self.symbol_table[var.value]
+
+        if isinstance(stored, NumOps):
+            stored = self.symbol_table[var.value]
+            var = stored
+
+        if isinstance(stored, BoolOps):
+            if stored.value == "WIN": 
+                var = NumOps(1)
+            else:
+                var = NumOps(0)
+
+
+        if isinstance(stored, StringOps):
+            if not checkFloat(stored.value):
+                error_msg = f"Type Error: Cannot proceed with arithmetic operations on NON-NUMBR/NUMBAR types: {type(var).__name__} and {type(other).__name__}\n{node.pos_start.fn}, line {node.pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(node.pos_start.ftxt, node.pos_start, node.pos_end)}"
+                raise Exception(error_msg)
+                
+            elif checkFloat(stored.value) == "FLOAT": 
+                var = NumOps(float(stored.value))
+            else:
+                var = NumOps(int(stored.value))       
+        
+        return var
+
     # All nodes involving arithmetic operations
     def visit_ArithmeticNode(self, node):
         left = self.visit(node.left_node)
@@ -55,60 +87,9 @@ class Interpreter:
         operand = node.op_tok.value
 
         if isinstance(left.value, str):
-            if left.value not in self.symbol_table:
-                raise Exception(f"Cannot assign to undeclared variable '{var_name}'")
-        
-            stored = self.symbol_table[left.value]
-
-            if isinstance(stored, NumOps):
-                stored = self.symbol_table[left.value]
-                left = stored
-
-            if isinstance(stored, BoolOps):
-                if stored.value == "WIN": 
-                    left = NumOps(1)
-                else:
-                    left = NumOps(0)
-
-
-            if isinstance(stored, StringOps):
-                if not checkFloat(stored.value):
-                    error_msg = f"Type Error: Cannot proceed with arithmetic operations on NON-NUMBR/NUMBAR types: {type(left).__name__} and {type(right).__name__}\n{node.pos_start.fn}, line {node.pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(node.pos_start.ftxt, node.pos_start, node.pos_end)}"
-                    raise Exception(error_msg)
-                    
-                elif checkFloat(stored.value) == "FLOAT": 
-                    left = NumOps(float(stored.value))
-                else:
-                    left = NumOps(int(stored.value))
-                    
-        
+            left = self.implicit_cast(left, right)
         if isinstance(right.value, str):
-            if right.value not in self.symbol_table:
-                raise Exception(f"Cannot assign to undeclared variable '{var_name}'")
-        
-            stored = self.symbol_table[right.value]
-            desired = ""
-            if isinstance(stored, NumOps):
-                stored = self.symbol_table[right.value]
-                right = stored
-
-            if isinstance(stored, BoolOps):
-                if stored.value == "WIN": 
-                    left = NumOps(1)
-                else:
-                    left = NumOps(0)
-
-            if isinstance(stored, StringOps):
-                if not checkFloat(stored.value):
-                    error_msg = f"Type Error: Cannot proceed with arithmetic operations on NON-NUMBR/NUMBAR types: {type(left).__name__} and {type(right).__name__}\n{node.pos_start.fn}, line {node.pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(node.pos_start.ftxt, node.pos_start, node.pos_end)}"
-                    raise Exception(error_msg)
-                    
-                elif checkFloat(stored.value) == "FLOAT": 
-                    right = NumOps(float(stored.value))
-                else:
-                    right = NumOps(int(stored.value))
-
-        
+            right = self.implicit_cast(right, left)
 
         if operand == "SUM OF":
             result = left.sum_of(right)
@@ -390,12 +371,12 @@ class Interpreter:
             bool_result = BoolOps(result)
             self.IT = bool_result
             return bool_result.set_pos(node.pos_start, node.pos_end)
-        elif op_type == "BIGGR OF":
-            # Maximum operation
-            result = self.max_operation(left, right, node.pos_start, node.pos_end)
-        elif op_type == "SMALLR OF":
-            # Minimum operation
-            result = self.min_operation(left, right, node.pos_start, node.pos_end)
+        # elif op_type == "BIGGR OF":
+        #     # Maximum operation
+        #     result = self.max_operation(left, right, node.pos_start, node.pos_end)
+        # elif op_type == "SMALLR OF":
+        #     # Minimum operation
+        #     result = self.min_operation(left, right, node.pos_start, node.pos_end)
         else:
             raise Exception(f"Unknown comparison operation: {op_type}")
 
@@ -416,9 +397,15 @@ class Interpreter:
         return result
 
     def max_operation(self, left, right, pos_start, pos_end):
-        if type(left) != type(right):
-            error_msg = f"Type Error: Cannot compare different types in BIGGR OF: {type(left).__name__} and {type(right).__name__}\n{pos_start.fn}, line {pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(pos_start.ftxt, pos_start, pos_end)}"
-            raise Exception(error_msg)
+
+        if isinstance(left.value, str):
+            left = self.implicit_cast(left, right)
+        if isinstance(right.value, str):
+            right = self.implicit_cast(right, left)
+
+        print(left)
+        print(right)
+
 
         try:
             # Numbers: standard max
@@ -436,10 +423,14 @@ class Interpreter:
             raise Exception(error_msg)
 
     def min_operation(self, left, right, pos_start, pos_end):
-        if type(left) != type(right):
-            error_msg = f"Type Error: Cannot compare different types in SMALLR OF: {type(left).__name__} and {type(right).__name__}\n{pos_start.fn}, line {pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(pos_start.ftxt, pos_start, pos_end)}"
-            raise Exception(error_msg)
 
+        if isinstance(left.value, str):
+            left = self.implicit_cast(left, right)
+        if isinstance(right.value, str):
+            right = self.implicit_cast(right, left)
+            
+        print(left)
+        print(right)
         try:
             # Numbers: standard min
             if isinstance(left, NumOps):
@@ -479,7 +470,8 @@ class Interpreter:
                     break
 
     def visit_BreakNode(self, node):
-        pass
+        return "stop"
+        
 
     # Responsible for function declaration and assignment to the symbol table
     def visit_FunctionNode(self, node):
@@ -510,11 +502,15 @@ class Interpreter:
         for i in range(len(parameter_values)):
             parameter_values[i] = self.visit(parameter_values[i])
 
-        func_inter = Interpreter(console_writer = self.console_writer, input_writer = self.input_writer, param_name = parameter_names, param_value = parameter_values)
+        func_inter = Interpreter(console_writer = self.console_writer, input_writer = self.input_writer, param_name = parameter_names, param_value = parameter_values, isFunction = True)
 
         # calculating each function
         for statement in node.body:
-            func_inter.visit(statement)
+            res = func_inter.visit(statement)
+            if res == "stop":
+                break
+
+        self.IT = func_inter.ret
 
         return parameter_values
 
@@ -527,6 +523,16 @@ class Interpreter:
 
         called = self.visit_Function(self.symbol_table[node.function_name.value], parameters)
         # called = called.copy()
+
+    def visit_ReturnNode(self, node):
+        print("helo")
+        if not self.isFunction:
+            error = RuntimeError(node.pos_start, node.pos_end, "Unable to return a value to a non-function ")
+            raise Exception(error.as_string())
+
+        self.ret = self.visit(node.expression.node)
+
+        return "stop"
 
     def visit_LoopNode(self, node):
         variable = node.start.varident
@@ -547,7 +553,8 @@ class Interpreter:
             if condition.value == False and clause == "WILE": break
 
             statements = self.visit(node.statements)
-
+            if statements == "stop":
+                break
             if operation == "UPPIN":
                 self.symbol_table[variable.value].value += 1
             else:
