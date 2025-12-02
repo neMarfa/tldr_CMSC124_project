@@ -418,7 +418,8 @@ class Parser:
         
         # checks if the first character in the list of tokens is the start of program character
         if self.current_tok.value != "HAI":
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'HAI' "))
+            if self.current_tok.value != "BTW":
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'HAI' "))
         res.register(self.advance())
 
         if self.current_tok.type != TK_NEWLINE:
@@ -822,7 +823,7 @@ class Parser:
         ))
 
     def print_statement(self):
-        # format: VISIBLE <expression> [AN <expression>]*
+        # format: VISIBLE <expression> [AN <expression>]* [!]
         res = ParserResult()
         tok = self.current_tok
         
@@ -837,24 +838,18 @@ class Parser:
         if res.error: return res
         expressions.append(expr)
         
-        # basically extends as long as there is a delimiter in the current statement
-        while self.current_tok and (self.current_tok.type == TK_DELIMITER or self.current_tok.type == TK_CONCAT):   
+        # parse additional expressions separated by AN, +, or SMOOSH
+        while self.current_tok and (self.current_tok.type == TK_DELIMITER or self.current_tok.type == TK_CONCAT or self.current_tok.type == "Concatenation Keyword"):   
             res.register(self.advance())
             expr = res.register(self.expression())
             if res.error: return res
             expressions.append(expr)
         
         suppress_newline = False
-        if self.current_tok.type == TK_EOS:
+        if self.current_tok and self.current_tok.type == TK_EOS:
             suppress_newline = True
             res.register(self.advance())
-
-        if self.current_tok.type != TK_NEWLINE and self.current_tok.type != TK_EOF:
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
-        
-        if self.current_tok.type == TK_NEWLINE:
-            res.register(self.advance())
-
+                
         return res.success(PrintNode(tok, expressions, suppress_newline))
 
     def var_decl_block(self):
