@@ -397,13 +397,27 @@ class Parser:
     def statements(self):
         res = ParserResult()
         tok = self.current_tok
-        final_tok = self.tokens[-2]
-        newline_check = self.tokens[-3]
-        pos_start = self.current_tok.pos_start.copy()
+        # final_tok = self.tokens[-2]
+        # newline_check = self.tokens[-3]
+        
         statements = []
+        while self.current_tok.value != "HAI":
+            if self.current_tok.value == "HOW IZ I":
+                func = self.function()
+                if func.error: return func
+                statements.append(func.node)
+
+            while self.current_tok.type == TK_NEWLINE:
+                res.register(self.advance())
+            
+            if self.current_tok.value not in  ["HAI","HOW IZ I"]:
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'HAI' "))
+
+
+        pos_start = self.current_tok.pos_start.copy()
         
         # checks if the first character in the list of tokens is the start of program character
-        if tok.value != "HAI":
+        if self.current_tok.value != "HAI":
             return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'HAI' "))
         res.register(self.advance())
 
@@ -411,13 +425,6 @@ class Parser:
             return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
 
         res.register(self.advance())
-
-        # checks immediately if the last character is the end of program
-        if final_tok.value != "KTHXBYE":
-            return res.failure(InvalidSyntaxError(final_tok.pos_start, final_tok.pos_end, "Expected 'KTHXBYE' "))
-        
-        if newline_check.type != TK_NEWLINE:
-            return res.failure(InvalidSyntaxError(newline_check.pos_start, newline_check.pos_end, "Expected '\\n' "))
                 
         # skip initial newlines
         while self.current_tok.type == TK_NEWLINE:
@@ -438,7 +445,7 @@ class Parser:
 
         KTHXBYE_count = 0
         # parse statements until we hit KTHXBYE
-        while self.current_tok.type != TK_EOF:
+        while self.current_tok.value != "KTHXBYE":
             # print(self.current_tok)
 
             err = self.statement_section(statements)
@@ -447,23 +454,35 @@ class Parser:
             if self.current_tok.value == "HAI":
                 return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Unexpected 'HAI' "))
 
-
             # skip newlines between statements
             while self.current_tok.type == TK_NEWLINE:
                 res.register(self.advance())
 
-            if self.current_tok.value == "KTHXBYE":
-                res.register(self.advance())
-                KTHXBYE_count += 1
+            if self.current_tok.type == TK_EOF:
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'KTHXBYE' "))
+                break
+        else:
+            res.register(self.advance())
+            KTHXBYE_count += 1
             
+        while self.current_tok.type != TK_EOF:
+            if self.current_tok.value == "KTHXBYE":
+               return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Unexpected 'KTHXBYE' "))
+
             if self.current_tok.type == TK_EOF:
                 break
-            
-            
-            
-            
-        if KTHXBYE_count > 1:
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "UNEXPECTED 'KTHXBYE' "))
+
+            if self.current_tok.value == "HOW IZ I":
+                func = self.function()
+                if func.error: return func
+                statements.insert(0, func.node)
+
+            while self.current_tok.type == TK_NEWLINE:
+                res.register(self.advance())
+                
+            if self.current_tok.value not in ["EOF","HOW IZ I"]:
+                name = "unexpected '" + str(self.current_tok.value) + "' "
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, name))
 
 
         return res.success(statements)

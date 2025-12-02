@@ -1,3 +1,5 @@
+from constants import *
+
 # DITO ilalagay lahat ng operations
 # Operations related to numbers
 class NumOps:
@@ -15,23 +17,37 @@ class NumOps:
 
     def sum_of(self, other):
         if isinstance(other, NumOps):
-            return NumOps(self.value + other.value)
-
+            if checkFloat(str(other.value)) == "INT" and checkFloat(str(self.value)) == "INT":
+                return NumOps(int(self.value + other.value))
+            else:
+                return NumOps(float(self.value + other.value))
     def diff_of(self, other):
         if isinstance(other, NumOps):
-            return NumOps(self.value - other.value)
+            if checkFloat(str(other.value)) == "INT" and checkFloat(str(self.value)) == "INT":
+                return NumOps(int(self.value - other.value))
+            else:
+                return NumOps(float(self.value - other.value))
 
     def produkt_of(self, other):
         if isinstance(other, NumOps):
-            return NumOps(self.value * other.value)
+            if checkFloat(str(other.value)) == "INT" and checkFloat(str(self.value)) == "INT":
+                return NumOps(int(self.value * other.value))
+            else:
+                return NumOps(float(self.value * other.value))
 
     def quoshunt_of(self, other):
         if isinstance(other, NumOps):
-            return NumOps(self.value / other.value)
+            if checkFloat(str(other.value)) == "INT" and checkFloat(str(self.value)) == "INT":
+                return NumOps(int(self.value / other.value))
+            else:
+                return NumOps(float(self.value / other.value))
 
     def mod_of(self, other):
         if isinstance(other, NumOps):
-            return NumOps(self.value % other.value)
+            if checkFloat(str(other.value)) == "INT" and checkFloat(str(self.value)) == "INT":
+                return NumOps(int(self.value % other.value))
+            else:
+                return NumOps(float(self.value % other.value))
 
     def bigger_of(self, other):
         if isinstance(other, NumOps):
