@@ -70,24 +70,28 @@ class Lexer:
 
     def make_tokens(self):
         tokens = []
-        
+        line_token_count = 0
+
         while self.current_char != None:
             if self.current_char in ' \t\r': #skip if contains a space, tab, or newline
                 self.advance()
             elif self.current_char in '\n':
                 tokens.append(Token(TK_NEWLINE, "\\n",self.pos.copy(), self.pos.copy()))
                 self.advance()
+                line_token_count = 0
             elif self.current_char == '"': # handles YARN (string) literals
                 result = self.make_string()
                 if isinstance(result, tuple) and result[1] is not None:  # Error case
                     return [], result[1]
                 tokens.extend(result)
+                line_token_count += len(result)
             elif self.current_char == '!':
                 tokens.append(Token(TK_EOS, '!', pos_start=self.pos.copy()))
                 self.advance()
+                line_token_count += 1
             elif self.current_char in LETTERS: # If it contains any letters check the format if it is a keyword otherwise it is just a variable
                 result = self.make_identifier(tokens)
-                
+
                 if isinstance(result, tuple) and result[1] is not None:  # Error case
                     return [], result[1]
 
@@ -96,32 +100,50 @@ class Lexer:
                     self.skip_single_line_comment()
                     continue
 
-                # check if it's a multi-ine comment keyword
-                if isinstance(result, Token) and result.type == "Multi-Line Comment Delimiter" and result.value is None:
-                    # Skip multi-line comment (OBTW ... TLDR)
-                    error = self.skip_multi_line_comment()
-                    if error:
-                        return [], error
-                    continue
-                # Check if TLDR without OBTW
-                if isinstance(result, Token) and result.type == "Multi-Line Comment Delimiter" and result.value == "TLDR":
-                    pos_start = result.pos_start
-                    return [], InvalidSyntaxError(pos_start, self.pos, "'TLDR' found without preceding 'OBTW' - ")
+                # check if it's a multi-line comment keyword
+                if isinstance(result, Token) and result.type == "Multi-Line Comment Delimiter":
+                    if result.value is None:  # OBTW
+                        # check no statements on same line before OBTW
+                        if line_token_count > 0:
+                            return [], InvalidSyntaxError(self.pos.copy(), self.pos.copy(), "Statements before OBTW on same line - ")
+                        # check no statements on same line after OBTW
+                        # error = self.check_no_statements_after_on_line()
+                        # if error:
+                        #     return [], error
+                        # Skip multi-line comment (OBTW ... TLDR)
+                        error = self.skip_multi_line_comment()
+                        if error:
+                            return [], error
+                        continue
+                    elif result.value == "TLDR":
+                        pos_start = result.pos_start
+                        # check no statements on same line before TLDR
+                        if line_token_count > 0:
+                            return [], InvalidSyntaxError(self.pos.copy(), self.pos.copy(), "Statements before TLDR on same line - ")
+                        # check no statements on same line after TLDR
+                        error = self.check_no_statements_after_on_line()
+                        if error:
+                            return [], error
+                        return [], InvalidSyntaxError(pos_start, self.pos, "'TLDR' found without preceding 'OBTW' - ")
                 tokens.append(result)
+                line_token_count += 1
             elif self.current_char in DIGITS: # handles NUMBARS AND NUMBRS
                 result = self.make_number()
                 if isinstance(result, tuple) and result[1] is not None:  # Error case
                     return [], result[1]
-              
+
                 tokens.append(result)
                 self.advance()
+                line_token_count += 1
             elif self.current_char == '+': # String concatenation operator
                 tokens.append(Token(TK_CONCAT, '+', pos_start=self.pos, pos_end=self.pos))
                 self.advance()
+                line_token_count += 1
             elif self.current_char == '-': # String concatenation operator
                 pos_start = self.pos.copy()
                 tokens.append(Token(TK_NEG, '-', pos_start, self.pos))
                 self.advance()
+                line_token_count += 1
                 if self.current_char not in DIGITS:
                     return [], IllegalCharError(pos_start, self.pos, "'-' ")
             else:  # case when an illegal character has been found
@@ -281,9 +303,19 @@ class Lexer:
             self.advance()
         # Don't advance past newline, let whitespace handler take care of it     
 
+    def check_no_statements_after_on_line(self):
+        temp_pos = self.pos.copy()
+        temp_current = self.current_char
+        while self.current_char != None and self.current_char != '\n':
+            if self.current_char not in ' \t\r':
+                return InvalidSyntaxError(temp_pos, self.pos.copy(), "Statements after comment delimiter on same line - ")
+            self.advance()
+        # restore
+        self.pos = temp_pos
+        self.current_char = temp_current
+        return None
+
     # for OBTW
-    # TODO: OBTW must come first before TLDR
-    # TODO: OBTW and TLDR must have their own lines
     def skip_multi_line_comment(self):
         pos_start = self.pos.copy()
 
@@ -308,6 +340,13 @@ class Lexer:
 
                 # Check if TLDR
                 if temp_str == 'TLDR':
+                    # check if OBTW and TLDR are on same line
+                    if saved_pos.ln == pos_start.ln:
+                        return InvalidSyntaxError(saved_pos, self.pos, "'OBTW' and 'TLDR' found on same line - ")
+                    # check no statements on same line after TLDR
+                    error_check = self.check_no_statements_after_on_line()
+                    if error_check:
+                        return error_check
                     # end the multi-line comment, skip all na nasa line ng TLDR
                     while self.current_char != None and self.current_char != '\n':
                         self.advance()
