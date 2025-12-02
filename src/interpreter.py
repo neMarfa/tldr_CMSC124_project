@@ -520,6 +520,11 @@ class Interpreter:
         body = node.body
         parameters = [param_name.value for param_name in node.start.node.parameters]
         func_value = Function(function_name, body, parameters)
+
+        if function_name in self.symbol_table:
+            error = RuntimeError(node.pos_start, node.pos_end, "Function Name is currently in use ")
+            raise Exception(error.as_string())
+
         self.symbol_table[function_name] = func_value
         return func_value
     """
