@@ -275,10 +275,16 @@ class Interpreter:
                 try:
                     return NumOps(int(value.value))
                 except ValueError:
-                    return NumOps(0)  # Default to 0 if conversion fails
+                    return NumOps(0)
+            elif isinstance(value, BoolOps):
+                if value.value == True:
+                    return NumOps(1)
+                else:
+                    return NumOps(0)
             elif isinstance(value, NoobOps):
                 return NumOps(0)
-        
+            else:
+                return NumOps(0)
         elif target_type == "NUMBAR":
             # cast to float
             if isinstance(value, NumOps):
@@ -288,31 +294,44 @@ class Interpreter:
                     return NumOps(float(value.value))
                 except ValueError:
                     return NumOps(0.0)
+            elif isinstance(value, BoolOps):
+                if value.value == True:
+                    return NumOps(1.0)
+                else:
+                    return NumOps(0.0)
             elif isinstance(value, NoobOps):
                 return NumOps(0.0)
-        
+            else:
+                return NumOps(0.0)
         elif target_type == "YARN":
-            # cast to string
-            return StringOps(str(value.value))
-        
+            if isinstance(value, BoolOps):
+                if value.value == True:
+                    return StringOps("WIN")
+                else:
+                    return StringOps("FAIL")
+            else:
+                return StringOps(str(value.value))
         elif target_type == "TROOF":
-            # cast to boolean
             if isinstance(value, NumOps):
-                # Numbers: 0 = FAIL, non-zero = WIN
-                return BoolOps(value.value != 0)
+                if value.value == 0:
+                    return BoolOps(False)
+                else:
+                    return BoolOps(True)
             elif isinstance(value, StringOps):
-                # Strings: empty = FAIL, non-empty = WIN
-                return BoolOps(len(value.value.strip()) > 0)
+                if value.value == "":
+                    return BoolOps(False)
+                else:
+                    return BoolOps(True)
             elif isinstance(value, BoolOps):
-                return value  # already boolean
+                return value
+            
             elif isinstance(value, NoobOps):
-                return BoolOps(False)  # NOOB = FAIL
-            return BoolOps(True)  # default to WIN for unknown types
-
+                return BoolOps(False)
+            else:
+                return BoolOps(True)
         elif target_type == "NOOB":
-            # cast to null
             return NoobOps()
-
+        
         return value
 
     # If the operands are not TROOFs, they should be implicitly typecast
