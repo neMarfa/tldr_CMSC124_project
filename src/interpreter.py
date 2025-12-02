@@ -150,9 +150,10 @@ class Interpreter:
             return self.IT
         elif var_name not in self.symbol_table:
             raise Exception(f"Variable '{var_name}' is not defined.")
-        
-        self.IT = self.symbol_table[var_name]
-        return self.symbol_table[var_name]
+
+        value = self.symbol_table[var_name]
+        self.IT = value
+        return value
     
     def visit_VarDeclBlockNode(self, node):
         # visit each declaration in the block
@@ -496,10 +497,22 @@ class Interpreter:
 
     def visit_SwitchCaseNode(self, node):
         matched = False
+
+        # Implicit casting for IT like in comparisons
+        it_value = self.IT
+        if isinstance(it_value, StringOps) and it_value.value != "":
+            it_value = self.determine_type(it_value.value)
+
         for case in node.statements:
             if isinstance(case, SwitchOMGNode):
                 expected_value = self.visit(case.expression)
-                if self.equality_check(self.IT, expected_value):
+
+                # Implicit casting for expected value if it's a string
+                if isinstance(expected_value, StringOps) and expected_value.value != "":
+                    expected_value = self.determine_type(expected_value.value)
+
+                check = self.equality_check(it_value, expected_value)
+                if check:
                     matched = True
                     for stmt in case.code:
                         self.visit(stmt)

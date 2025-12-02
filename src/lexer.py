@@ -72,7 +72,7 @@ class Lexer:
         tokens = []
         
         while self.current_char != None:
-            if self.current_char in ' \t': #skip if contains a space, tab, or newline
+            if self.current_char in ' \t\r': #skip if contains a space, tab, or newline
                 self.advance()
             elif self.current_char in '\n':
                 tokens.append(Token(TK_NEWLINE, "\\n",self.pos.copy(), self.pos.copy()))

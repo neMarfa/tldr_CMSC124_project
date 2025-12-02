@@ -576,8 +576,12 @@ class Parser:
                     if typecast.error: return typecast
                     statements.append(typecast.node)
                 else:
-                    # just a variable reference (skip for now)
-                    res.register(self.advance())
+                    # # just a variable reference (skip for now)
+                    # res.register(self.advance())
+                    # lone variable reference - treat as expression
+                    expr = self.expression()
+                    if expr.error: return expr
+                    statements.append(expr.node)
 
         elif self.current_tok.value == "WTF?":
             switch = self.switch_case()
@@ -846,10 +850,11 @@ class Parser:
         expr = res.register(self.expression())
         if res.error: return res
         expressions.append(expr)
-        
-        # parse additional expressions separated by AN, +, or SMOOSH
-        while self.current_tok and (self.current_tok.type == TK_DELIMITER or self.current_tok.type == TK_CONCAT or self.current_tok.type == "Concatenation Keyword"):   
-            res.register(self.advance())
+
+        # Continue parsing expressions greedily until end of statement
+        # TODO: check if this will affect concat
+        while self.current_tok and self.current_tok.type not in (TK_NEWLINE, TK_EOF) and self.current_tok.value not in ("KTHXBYE", "GTFO"):
+            # Skip any whitespace or unexpected tokens? But in LOLCODE, expressions are separated by spaces implicitly
             expr = res.register(self.expression())
             if res.error: return res
             expressions.append(expr)
@@ -858,7 +863,13 @@ class Parser:
         if self.current_tok and self.current_tok.type == TK_EOS:
             suppress_newline = True
             res.register(self.advance())
-                
+
+        if self.current_tok.type != TK_NEWLINE and self.current_tok.type != TK_EOF and self.current_tok.value not in ("KTHXBYE", "GTFO") and self.current_tok.type != "Output Keyword":
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
+        
+        if self.current_tok.type == TK_NEWLINE:
+            res.register(self.advance())
+
         return res.success(PrintNode(tok, expressions, suppress_newline))
 
     def var_decl_block(self):
