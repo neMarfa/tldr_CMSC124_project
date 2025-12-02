@@ -849,7 +849,7 @@ class Parser:
             suppress_newline = True
             res.register(self.advance())
 
-        if self.current_tok.type != TK_NEWLINE and self.current_tok.type != TK_EOF:
+        if self.current_tok.type != TK_NEWLINE and self.current_tok.type != TK_EOF and self.current_tok.value != "KTHXBYE" and self.current_tok.type != "Output Keyword":
             return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
         
         if self.current_tok.type == TK_NEWLINE:
