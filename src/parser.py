@@ -140,18 +140,20 @@ class StringNode:
         return f'YARN:{self.tok}'
     
 class PrintNode: 
-    def __init__(self, keyword_tok, expressions, eos = False):
+    def __init__(self, keyword_tok, expressions, eos=False):
         self.keyword_tok = keyword_tok
         self.expressions = expressions
         self.eos = eos
+        
+        self.pos_start = keyword_tok.pos_start
+        if expressions:
+            self.pos_end = expressions[-1].pos_end if hasattr(expressions[-1], 'pos_end') else keyword_tok.pos_end
+        else:
+            self.pos_end = keyword_tok.pos_end
 
     def __repr__(self):
-        if self.eos:
-            mark = "!"
-        else:
-            ""
+        mark = "!" if self.eos else ""
         return f'(VISIBLE, {", ".join(str(expr) for expr in self.expressions)}{mark})'
-    
 class VarDeclBlockNode:
     def __init__(self, wazzup_tok, declarations, buhbye_tok):
         self.wazzup_tok = wazzup_tok
@@ -418,7 +420,8 @@ class Parser:
         
         # checks if the first character in the list of tokens is the start of program character
         if self.current_tok.value != "HAI":
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'HAI' "))
+            if self.current_tok.value != "BTW":
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'HAI' "))
         res.register(self.advance())
 
         if self.current_tok.type != TK_NEWLINE:
@@ -498,16 +501,22 @@ class Parser:
         # check if we've reached the end
         if self.current_tok.value == "KTHXBYE":
             return None
+        
+        # check for same-line VISIBLE !!!
+        if statements and self.current_tok.type == "Output Keyword":
+            last_stmt = statements[-1]
+            
+            # check if last statement was a VISIBLE
+            if type(last_stmt).__name__ == 'PrintNode':
+                # check if they're on the same line
+                if hasattr(last_stmt, 'pos_end') and hasattr(self.current_tok, 'pos_start'):
+                    if self.current_tok.pos_start.ln == last_stmt.pos_end.ln:
+                        return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Multiple VISIBLE statements on same line not allowed"))
 
         if self.current_tok.type == "Output Keyword":
             print_stmt = self.print_statement()
             if print_stmt.error: return print_stmt
             statements.append(print_stmt.node)
-
-        # elif self.current_tok.type == "Variable Declaration":
-        #     var_decl = self.var_declaration()
-        #     if var_decl.error: return var_decl
-        #     statements.append(var_decl.node)
 
         elif self.current_tok.value in arithmetic:
             arith = self.arithmetic_expr()
@@ -606,6 +615,7 @@ class Parser:
 
         elif self.current_tok.value == "MKAY":
             return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "MKAY must pair with an expression or a function call - "))
+   
         
     # ========== END OF REPLACED METHODS ==========
 
@@ -826,7 +836,7 @@ class Parser:
         ))
 
     def print_statement(self):
-        # format: VISIBLE <expression> [AN <expression>]*
+        # format: VISIBLE <expression> [AN <expression>]* [!]
         res = ParserResult()
         tok = self.current_tok
         
@@ -850,7 +860,7 @@ class Parser:
             expressions.append(expr)
         
         suppress_newline = False
-        if self.current_tok.type == TK_EOS:
+        if self.current_tok and self.current_tok.type == TK_EOS:
             suppress_newline = True
             res.register(self.advance())
 

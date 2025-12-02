@@ -253,14 +253,14 @@ class Interpreter:
         for expr in node.expressions:
             value = self.visit(expr)
         
-        if isinstance(value, BoolOps):
-            # convert boolean to WIN/FAIL
-            display_value = "WIN" if value.value else "FAIL"
-        else:
-            # for all other types, use their value
-            display_value = str(value.value)
-        
-        output.append(display_value)
+            if isinstance(value, BoolOps):
+                # convert boolean to WIN/FAIL
+                display_value = "WIN" if value.value else "FAIL"
+            else:
+                # for all other types, use their value
+                display_value = str(value.value)
+            
+            output.append(display_value)
         
         # print spaces bet
         result = " ".join(output)
