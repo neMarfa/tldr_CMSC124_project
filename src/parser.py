@@ -837,8 +837,8 @@ class Parser:
         if res.error: return res
         expressions.append(expr)
         
-        # basically extends as long as there is a delimiter in the current statement
-        while self.current_tok and (self.current_tok.type == TK_DELIMITER or self.current_tok.type == TK_CONCAT):   
+        # basically extends as long as there is a delimiter in the current statement or arithmetic op
+        while self.current_tok and (self.current_tok.type == TK_DELIMITER or self.current_tok.type == TK_CONCAT or self.current_tok.value in arithmetic):
             res.register(self.advance())
             expr = res.register(self.expression())
             if res.error: return res
@@ -849,7 +849,7 @@ class Parser:
             suppress_newline = True
             res.register(self.advance())
 
-        if self.current_tok.type != TK_NEWLINE and self.current_tok.type != TK_EOF and self.current_tok.value != "KTHXBYE" and self.current_tok.type != "Output Keyword":
+        if self.current_tok.type != TK_NEWLINE and self.current_tok.type != TK_EOF and self.current_tok.value not in ("KTHXBYE", "GTFO") and self.current_tok.type != "Output Keyword":
             return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
         
         if self.current_tok.type == TK_NEWLINE:
