@@ -819,7 +819,7 @@ class Parser:
         expressions.append(expr)
         
         # basically extends as long as there is a delimiter in the current statement
-        while self.current_tok and self.current_tok.type == TK_DELIMITER:   
+        while self.current_tok and (self.current_tok.type == TK_DELIMITER or self.current_tok.type == TK_CONCAT):   
             res.register(self.advance())
             expr = res.register(self.expression())
             if res.error: return res
