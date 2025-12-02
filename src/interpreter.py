@@ -38,10 +38,11 @@ class Interpreter:
         return BoolOps(bool_value).set_pos(node.pos_start, node.pos_end)
     
     def visit_ListNode(self, node):
-        res = ParserResult()
-        statements = []
         for statement in node.statement_nodes:
-            statements.append(res.register(self.visit(statement))) 
+            val = self.visit(statement)
+            if val == "stop":
+                return "stop"
+        return None
 
     def visit_NegationNode(self, node):
         node = self.visit(node.node)

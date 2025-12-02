@@ -35,6 +35,9 @@ class ListNode:
     def __init__(self, statement_nodes):
         self.statement_nodes = statement_nodes
 
+    def __iter__(self):
+        return iter(self.statement_nodes)
+
 class KeywordNode:
     def __init__(self, tok):
         self.tok = tok
@@ -488,7 +491,7 @@ class Parser:
                 return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, name))
 
 
-        return res.success(statements)
+        return res.success(ListNode(statements))
 
     # PLACE ALL THE STATEMENTS HERE, WILL BE REUSED IN FUNCTIONS AND LOOPS
     def statement_section(self, statements):
@@ -615,6 +618,13 @@ class Parser:
 
         elif self.current_tok.value == "MKAY":
             return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "MKAY must pair with an expression or a function call - "))
+
+        else:
+            # Parse expression statement
+            expr = self.expression()
+            if expr.error: return expr
+            statements.append(expr.node)
+
    
         
     # ========== END OF REPLACED METHODS ==========
