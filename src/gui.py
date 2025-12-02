@@ -353,10 +353,22 @@ class LOLCodeGUI:
         self.console.see(tk.END)
         self.console.config(state=tk.DISABLED)
     #------------------------------------------------------------------------------------------------------------
+    def checkFloat(self, assumedFloat):
+        try:
+            if float(assumedFloat) % 1 != 0:
+                return "FLOAT"
+            if assumedFloat.count('.') == 1:
+                return "FLOAT"
+            return "INT"
+        except ValueError:
+            return False
 
     # this obtains the input based on a single line
     def obtain_input(self, event):
-        content = self.console.get("insert linestart", "insert").strip()
+        protected = self.console.tag_ranges("read_only")
+        start = protected[-1]
+        content = self.console.get(start, "end-1c").strip()
+        print(len(content))
         self.input = content
         self.input_wait_flag.set(True)
 
@@ -389,7 +401,7 @@ class LOLCodeGUI:
 
         self.console.config(state=tk.DISABLED)
         # Makes the inputted file undeletable
-        self.console.tag_add("read_only", "insert linestart", "end-1c")
+        self.console.tag_add("read_only", "1.0", "end-1c")
 
         
         retrieved = self.input

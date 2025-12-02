@@ -112,7 +112,7 @@ class Lexer:
                 tokens.append(result)
                 self.advance()
             elif self.current_char == '+': # String concatenation operator
-                tokens.append(Token(TK_CONCAT, '+'))
+                tokens.append(Token(TK_CONCAT, '+', pos_start=self.pos, pos_end=self.pos))
                 self.advance()
             elif self.current_char == '-': # String concatenation operator
                 pos_start = self.pos.copy()

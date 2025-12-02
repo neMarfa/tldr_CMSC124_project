@@ -1322,22 +1322,9 @@ class Parser:
                 # parse OMG
                 omg_tok = self.current_tok
                 res.register(self.advance())
-
-                value_tok = self.current_tok
-                # check if literal
-                if value_tok.type not in (TK_INT, TK_FLOAT, TK_STRING, TK_BOOL):
-                    return res.failure(InvalidSyntaxError(value_tok.pos_start, value_tok.pos_end, "Expected value literal (NUMBR, NUMBAR, YARN, TROOF) after OMG - "))
-
-                res.register(self.advance())
-
-                if value_tok.type == TK_INT:
-                    value_node = NumberNode(value_tok)
-                elif value_tok.type == TK_FLOAT:
-                    value_node = NumberNode(value_tok)
-                elif value_tok.type == TK_STRING:
-                    value_node = StringNode(value_tok)
-                elif value_tok.type == TK_BOOL:
-                    value_node = BoolNode(value_tok)
+                
+                value_node = res.register(self.expression())
+                if res.error: return res
 
                 if self.current_tok.type == TK_NEWLINE:
                    res.register(self.advance())
@@ -1462,7 +1449,6 @@ class Parser:
 
             if self.current_tok.type == TK_EOF:
                 return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Function Delimiter 'IF U SAY SO' " ))
-            res.register(self.advance())
 
             if self.current_tok.value == "IF U SAY SO":
                 print(self.current_tok)
@@ -1471,6 +1457,8 @@ class Parser:
                 if self.previous_tok.type != TK_NEWLINE:
                     return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
                 break
+            res.register(self.advance())
+
 
         end = self.current_tok
         res.register(self.advance())

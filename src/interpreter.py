@@ -11,6 +11,7 @@ class Interpreter:
         self.console_writer = console_writer
         self.input_writer = input_writer
         self.IT = NoobOps()  # implicit variable for statements
+        
         self.ret = NoobOps()
         self.isFunction = isFunction
         if param_name is not None:
@@ -49,9 +50,18 @@ class Interpreter:
         print(result.value)
         return result.set_pos(node.pos_start, node.pos_end)
 
+    def determine_type(self,data):
+        if not checkFloat(data):
+            var = data
+            
+        elif checkFloat(data) == "FLOAT": 
+            var = NumOps(float(data))
+        else:
+            var = NumOps(int(data))  
+        
+        return var
     
-    def implicit_cast(self, var, other):
-        print(var.value)
+    def implicit_cast(self, var):
         if var.value not in self.symbol_table:
             raise Exception(f"Cannot assign to undeclared variable '{var.value}'")
     
@@ -61,6 +71,7 @@ class Interpreter:
             stored = self.symbol_table[var.value]
             var = stored
 
+
         if isinstance(stored, BoolOps):
             if stored.value == "WIN": 
                 var = NumOps(1)
@@ -69,14 +80,8 @@ class Interpreter:
 
 
         if isinstance(stored, StringOps):
-            if not checkFloat(stored.value):
-                error_msg = f"Type Error: Cannot proceed with arithmetic operations on NON-NUMBR/NUMBAR types: {type(var).__name__} and {type(other).__name__}\n{node.pos_start.fn}, line {node.pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(node.pos_start.ftxt, node.pos_start, node.pos_end)}"
-                raise Exception(error_msg)
-                
-            elif checkFloat(stored.value) == "FLOAT": 
-                var = NumOps(float(stored.value))
-            else:
-                var = NumOps(int(stored.value))       
+            print(stored.value)
+            var = self.determine_type(stored.value)
         
         return var
 
@@ -85,12 +90,31 @@ class Interpreter:
         left = self.visit(node.left_node)
         right = self.visit(node.right_node)
         operand = node.op_tok.value
+        
 
         if isinstance(left.value, str):
-            left = self.implicit_cast(left, right)
+            left = self.implicit_cast(left)
         if isinstance(right.value, str):
-            right = self.implicit_cast(right, left)
+            right = self.implicit_cast(right)
 
+        if type(left) != type(right):
+            error_msg = f"Type Error: Cannot proceed with arithmetic operations on NON-NUMBR/NUMBAR types: {type(left).__name__} and {type(right).__name__}\n{node.pos_start.fn}, line {node.pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(node.pos_start.ftxt, node.pos_start, node.pos_end)}"
+            raise Exception(error_msg)     
+         
+        if isinstance(left.value, str):
+            if operand == "BIGGR OF":
+            # Maximum operation
+                result = self.max_operation(left, right, node.pos_start, node.pos_end)
+            elif operand == "SMALLR OF":
+            # Minimum operation
+                result = self.min_operation(left, right, node.pos_start, node.pos_end)
+            else: 
+                error_msg = f"Type Error: Cannot proceed with arithmetic operations on NON-NUMBR/NUMBAR types: {type(left).__name__} and {type(right).__name__}\n{node.pos_start.fn}, line {node.pos_start.ln+1}\n\n{string_with_arrows.string_with_arrows(node.pos_start.ftxt, node.pos_start, node.pos_end)}"
+                raise Exception(error_msg)     
+            print(result.value)
+            self.IT = result  # set IT to the result
+            return result.set_pos(node.pos_start, node.pos_end)
+    
         if operand == "SUM OF":
             result = left.sum_of(right)
         elif operand == "DIFF OF":
@@ -121,8 +145,13 @@ class Interpreter:
     def visit_IdentifierNode(self, node):
         var_name = node.tok.value
         print(var_name)
-        if var_name not in self.symbol_table:
+
+        if var_name == "IT":
+            return self.IT
+        elif var_name not in self.symbol_table:
             raise Exception(f"Variable '{var_name}' is not defined.")
+        
+        self.IT = self.symbol_table[var_name]
         return self.symbol_table[var_name]
     
     def visit_VarDeclBlockNode(self, node):
@@ -190,8 +219,9 @@ class Interpreter:
 
 
         value = self.input_writer()
-
-        print(type(node.varident.pos_end))
+        if len(value) == 0:
+            visited = NoobOps()
+            return visited
 
         string_tok = lexer.Token(TK_STRING, value, node.varident.pos_end, node.varident.pos_end)
         string = StringNode(string_tok)
@@ -353,6 +383,11 @@ class Interpreter:
         left = self.visit(node.left_node)
         right = self.visit(node.right_node)
 
+        if isinstance(left.value, str):
+            left = self.determine_type(left.value)
+        if isinstance(right.value, str):
+            right = self.determine_type(right.value)
+
         if op_type == "BOTH SAEM":
             # Equality comparison
             if type(left) != type(right):
@@ -371,12 +406,7 @@ class Interpreter:
             bool_result = BoolOps(result)
             self.IT = bool_result
             return bool_result.set_pos(node.pos_start, node.pos_end)
-        # elif op_type == "BIGGR OF":
-        #     # Maximum operation
-        #     result = self.max_operation(left, right, node.pos_start, node.pos_end)
-        # elif op_type == "SMALLR OF":
-        #     # Minimum operation
-        #     result = self.min_operation(left, right, node.pos_start, node.pos_end)
+
         else:
             raise Exception(f"Unknown comparison operation: {op_type}")
 
@@ -398,15 +428,6 @@ class Interpreter:
 
     def max_operation(self, left, right, pos_start, pos_end):
 
-        if isinstance(left.value, str):
-            left = self.implicit_cast(left, right)
-        if isinstance(right.value, str):
-            right = self.implicit_cast(right, left)
-
-        print(left)
-        print(right)
-
-
         try:
             # Numbers: standard max
             if isinstance(left, NumOps):
@@ -424,13 +445,6 @@ class Interpreter:
 
     def min_operation(self, left, right, pos_start, pos_end):
 
-        if isinstance(left.value, str):
-            left = self.implicit_cast(left, right)
-        if isinstance(right.value, str):
-            right = self.implicit_cast(right, left)
-            
-        print(left)
-        print(right)
         try:
             # Numbers: standard min
             if isinstance(left, NumOps):
