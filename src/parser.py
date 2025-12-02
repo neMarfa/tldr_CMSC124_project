@@ -440,6 +440,7 @@ class Parser:
         # parse statements until we hit KTHXBYE
         while self.current_tok.type != TK_EOF:
             # print(self.current_tok)
+
             err = self.statement_section(statements)
             if err != None: return err
             
@@ -450,19 +451,16 @@ class Parser:
             # skip newlines between statements
             while self.current_tok.type == TK_NEWLINE:
                 res.register(self.advance())
-                if self.current_tok.value == "KTHXBYE":
-                    KTHXBYE_count += 1
-                    res.register(self.advance())
-            
-                if self.current_tok.value == "EOF":
-                    break
-            
+
             if self.current_tok.value == "KTHXBYE":
                 res.register(self.advance())
                 KTHXBYE_count += 1
             
             if self.current_tok.type == TK_EOF:
                 break
+            
+            
+            
             
         if KTHXBYE_count > 1:
             return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "UNEXPECTED 'KTHXBYE' "))
@@ -577,11 +575,11 @@ class Parser:
         elif self.current_tok.value == "OIC":
             return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "OIC must be within O RLY? or WTF? block - "))
         
-        # elif self.current_tok.value == "IM OUTTA YR":
-        #     return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "IM OUTTA YR must close a IM IN YR block - "))
+        elif self.current_tok.value == "IM OUTTA YR":
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "IM OUTTA YR must close a IM IN YR block - "))
 
-        # elif self.current_tok.value == "IF U SAY SO":
-        #     return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "IF U SAY SO must close a HOW IZ I block - "))
+        elif self.current_tok.value == "IF U SAY SO":
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "IF U SAY SO must close a HOW IZ I block - "))
 
         elif self.current_tok.value == "MKAY":
             return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "MKAY must pair with an expression or a function call - "))
@@ -1164,6 +1162,15 @@ class Parser:
         
             res.register(self.advance())
 
+            while self.current_tok.type == TK_NEWLINE:
+                res.register(self.advance())
+
+            if self.current_tok.value == "IM OUTTA YR":
+                if self.previous_tok.type != TK_NEWLINE:
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
+                break
+        
+
         end = self.loop_end()
         
         if end.node.label.value != start.node.label.value:
@@ -1457,7 +1464,19 @@ class Parser:
                 if self.previous_tok.type != TK_NEWLINE:
                     return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
                 break
+
             res.register(self.advance())
+
+            while self.current_tok.type == TK_NEWLINE:
+                res.register(self.advance())
+        
+            if self.current_tok.value == "IF U SAY SO":
+                print(self.current_tok)
+                end = self.current_tok
+
+                if self.previous_tok.type != TK_NEWLINE:
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
+                break
 
 
         end = self.current_tok
