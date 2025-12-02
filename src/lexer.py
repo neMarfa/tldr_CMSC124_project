@@ -103,6 +103,10 @@ class Lexer:
                     if error:
                         return [], error
                     continue
+                # Check if TLDR without OBTW
+                if isinstance(result, Token) and result.type == "Multi-Line Comment Delimiter" and result.value == "TLDR":
+                    pos_start = result.pos_start
+                    return [], InvalidSyntaxError(pos_start, self.pos, "'TLDR' found without preceding 'OBTW' - ")
                 tokens.append(result)
             elif self.current_char in DIGITS: # handles NUMBARS AND NUMBRS
                 result = self.make_number()
