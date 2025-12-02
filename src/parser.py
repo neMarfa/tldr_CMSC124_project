@@ -932,7 +932,8 @@ class Parser:
             if res.error: 
                 return res
             expressions.append(expr)
-        
+        if self.current_tok.type == "Operation End" or self.current_tok.value == "MKAY":
+            res.register(self.advance())
         return res.success(ConcatNode(tok, expressions))
 
     def typecast_maek(self):
