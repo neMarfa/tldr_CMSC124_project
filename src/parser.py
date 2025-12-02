@@ -851,10 +851,9 @@ class Parser:
         if res.error: return res
         expressions.append(expr)
 
-        # Continue parsing expressions greedily until end of statement
-        # TODO: check if this will affect concat
-        while self.current_tok and self.current_tok.type not in (TK_NEWLINE, TK_EOF) and self.current_tok.value not in ("KTHXBYE", "GTFO"):
-            # Skip any whitespace or unexpected tokens? But in LOLCODE, expressions are separated by spaces implicitly
+        # basically extends as long as there is a delimiter in the current statement or arithmetic op
+        while self.current_tok and (self.current_tok.type == TK_DELIMITER or self.current_tok.type == TK_CONCAT or self.current_tok.value in arithmetic):
+            res.register(self.advance())
             expr = res.register(self.expression())
             if res.error: return res
             expressions.append(expr)
