@@ -1109,10 +1109,6 @@ class Parser:
         expression = self.comparison_expr()
         if expression.error: return expression
 
-
-        if self.current_tok.type != TK_NEWLINE:
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
-
         return res.success(LoopDeclarationNode(declaration, label, operation, varident, clause, expression.node))
 
     # for the loop delimiter
@@ -1152,14 +1148,14 @@ class Parser:
                     return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Statements Before Closing Loop "))
                 return err
 
+            if self.current_tok.type == TK_EOF:
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Function Delimiter 'IM OUTTA YR' " ))
+
             if self.current_tok.value == "IM OUTTA YR":
                 if self.previous_tok.type != TK_NEWLINE:
                     return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
                 break
 
-            if self.current_tok.value == "KTHXBYE":
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Loop Delimiter 'IM OUTTA YR' " ))
-        
             res.register(self.advance())
 
             while self.current_tok.type == TK_NEWLINE:
