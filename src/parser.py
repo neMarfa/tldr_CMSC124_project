@@ -567,8 +567,12 @@ class Parser:
                     if typecast.error: return typecast
                     statements.append(typecast.node)
                 else:
-                    # just a variable reference (skip for now)
-                    res.register(self.advance())
+                    # # just a variable reference (skip for now)
+                    # res.register(self.advance())
+                    # lone variable reference - treat as expression
+                    expr = self.expression()
+                    if expr.error: return expr
+                    statements.append(expr.node)
 
         elif self.current_tok.value == "WTF?":
             switch = self.switch_case()
