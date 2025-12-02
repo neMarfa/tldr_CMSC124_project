@@ -133,7 +133,6 @@ class Lexer:
                     return [], result[1]
 
                 tokens.append(result)
-                self.advance()
                 line_token_count += 1
             elif self.current_char == '+': # String concatenation operator
                 tokens.append(Token(TK_CONCAT, '+', pos_start=self.pos, pos_end=self.pos))
