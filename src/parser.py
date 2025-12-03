@@ -1070,6 +1070,9 @@ class Parser:
         if res.error:
             return res
 
+        if self.current_tok.value == "A":
+            res.register(self.advance())
+
         type_tok = self.current_tok
         if type_tok.value not in ("NUMBR", "NUMBAR", "YARN", "NOOB", "TROOF"):
             return res.failure(InvalidSyntaxError(type_tok.pos_start, type_tok.pos_end, "Expected 'MAEK'"))
