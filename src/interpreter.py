@@ -491,10 +491,16 @@ class Interpreter:
     def visit_IfNode(self, node):
         if self.to_bool(self.IT):
             for stmt in node.if_statements:
-                self.visit(stmt)
+                result =self.visit(stmt)
+                if result == "stop":
+                    return result
         else:
             for stmt in node.else_statements:
-                self.visit(stmt)
+                result =self.visit(stmt)
+                if result == "stop":
+                    return result
+        
+        
 
     def visit_SwitchCaseNode(self, node):
         matched = False
@@ -503,7 +509,7 @@ class Interpreter:
         it_value = self.IT
         if isinstance(it_value, StringOps) and it_value.value != "":
             it_value = self.determine_type(it_value.value)
-
+        result = "stop"
         for case in node.statements:
             if isinstance(case, SwitchOMGNode):
                 expected_value = self.visit(case.expression)
@@ -513,11 +519,15 @@ class Interpreter:
                     expected_value = self.determine_type(expected_value.value)
 
                 check = self.equality_check(it_value, expected_value)
-                if check:
+                if check or result != "stop":
                     matched = True
                     for stmt in case.code:
-                        self.visit(stmt)
-                    break
+                        result = "go"
+                        result = self.visit(stmt)
+                        if result == "stop":
+                            break
+                    if result == "stop":
+                        break
             elif isinstance(case, SwitchOMGWTFNode):
                 if not matched:
                     for stmt in case.code:

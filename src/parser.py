@@ -1259,14 +1259,15 @@ class Parser:
                 return err
 
             if self.current_tok.type == TK_EOF:
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Function Delimiter 'IM OUTTA YR' " ))
+                return res.failure(InvalidSyntaxError(start.node.pos_start, start.node.pos_end, "Expected Loop Delimiter 'IM OUTTA YR' " ))
 
             if self.current_tok.value == "IM OUTTA YR":
                 if self.previous_tok.type != TK_NEWLINE:
                     return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
                 break
 
-            res.register(self.advance())
+            if self.current_tok.type == TK_EOF or self.current_tok.value == "KTHXBYE":
+                return res.failure(InvalidSyntaxError(start.node.pos_start, start.node.pos_end, "Expected Loop Delimiter 'IM OUTTA YR' " ))
 
             while self.current_tok.type == TK_NEWLINE:
                 res.register(self.advance())
@@ -1423,6 +1424,8 @@ class Parser:
 #  Handles the entire switch statement
     def switch_case(self):
         res = ParserResult()
+        start = self.current_tok.pos_start
+        end = self.current_tok.pos_start
         wtf_tok = self.current_tok
         res.register(self.advance())  # skip WTF?
 
@@ -1435,6 +1438,9 @@ class Parser:
         cases = []
 
         while self.current_tok.value != "OIC":
+            print(self.current_tok)
+            if self.current_tok.type == TK_EOF or self.current_tok.value == "KTHXBYE":
+                return res.failure(InvalidSyntaxError(start, end, "Expected Switch-Case Delimiter 'OIC' " ))
             if self.current_tok.value == "OMG":
                 # parse OMG
                 omg_tok = self.current_tok
@@ -1456,6 +1462,9 @@ class Parser:
 
                     while self.current_tok.type == TK_NEWLINE:
                         res.register(self.advance())
+                    
+                    if self.current_tok.type == TK_EOF or self.current_tok.value == "KTHXBYE":
+                        return res.failure(InvalidSyntaxError(start, end, "Expected Switch-Case Delimiter 'OIC' " ))
 
                 cases.append(SwitchOMGNode(omg_tok, value_node, inner_statements))
 
@@ -1476,6 +1485,8 @@ class Parser:
 
                     while self.current_tok.type == TK_NEWLINE:
                         res.register(self.advance())
+                    if self.current_tok.type == TK_EOF or self.current_tok.value == "KTHXBYE":
+                        return res.failure(InvalidSyntaxError(start, end, "Expected Switch-Case Delimiter 'OIC' " ))
 
                 cases.append(SwitchOMGWTFNode(omgwtf_tok, inner_statements))
 
@@ -1492,6 +1503,8 @@ class Parser:
 
         # if end without OMGWTF
         oic_tok = self.current_tok
+        if oic_tok.value != "OIC":
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected OIC after OMG - "))
         res.register(self.advance())
         return res.success(SwitchCaseNode(wtf_tok, cases, oic_tok))
 
@@ -1554,7 +1567,6 @@ class Parser:
     # The function itself
     def function(self):
         res = ParserResult()
-
         start = self.function_definition()
         if start.error: return start
         statements = []
@@ -1567,8 +1579,8 @@ class Parser:
                     return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Statements Before Closing Function "))
                 return err
 
-            if self.current_tok.type == TK_EOF:
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected Function Delimiter 'IF U SAY SO' " ))
+            if self.current_tok.type == TK_EOF or self.current_tok.value == "KTHXBYE":
+                return res.failure(InvalidSyntaxError(start.node.pos_start, start.node.pos_end, "Expected Function Delimiter 'IF U SAY SO' " ))
 
             if self.current_tok.value == "IF U SAY SO":
                 print(self.current_tok)
@@ -1578,7 +1590,8 @@ class Parser:
                     return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected '\\n' "))
                 break
 
-            res.register(self.advance())
+            # if self.current_tok.value not in KEYWORDS.keys():
+            #     res.register(self.advance())
 
             while self.current_tok.type == TK_NEWLINE:
                 res.register(self.advance())
