@@ -468,6 +468,8 @@ class Parser:
                 return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'KTHXBYE' "))
                 break
         else:
+            if self.previous_tok.type != TK_NEWLINE:
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
             res.register(self.advance())
             KTHXBYE_count += 1
             
@@ -524,6 +526,8 @@ class Parser:
         elif self.current_tok.value in arithmetic:
             arith = self.arithmetic_expr()
             if arith.error: return arith
+            if self.current_tok.type != TK_NEWLINE:
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
             statements.append(arith.node)
 
         elif self.current_tok.value == "IM IN YR":
@@ -549,6 +553,8 @@ class Parser:
         elif self.current_tok.value == "FOUND YR":
             ret = self.return_expressions()
             if ret.error: return ret
+            if self.current_tok.type != TK_NEWLINE:
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
             statements.append(ret.node)
 
         elif self.current_tok.value == "HOW IZ I":
@@ -560,6 +566,8 @@ class Parser:
             concat = self.concat()
             if concat.error:
                 return concat
+            if self.current_tok.type != TK_NEWLINE:
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
             statements.append(concat.node)
 
         elif self.current_tok.type == "varident":
@@ -572,11 +580,16 @@ class Parser:
                     # assignment
                     assign = self.assignment()
                     if assign.error: return assign
+                    if self.current_tok.type != TK_NEWLINE:
+                        return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))                   
+
                     statements.append(assign.node)
                 elif next_tok.value == "IS NOW A":
                     # typecast
                     typecast = self.typecast_is_now_a()
                     if typecast.error: return typecast
+                    if self.current_tok.type != TK_NEWLINE:
+                        return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
                     statements.append(typecast.node)
                 else:
                     # # just a variable reference (skip for now)
@@ -584,21 +597,29 @@ class Parser:
                     # lone variable reference - treat as expression
                     expr = self.expression()
                     if expr.error: return expr
+                    if self.current_tok.type != TK_NEWLINE:
+                        return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
                     statements.append(expr.node)
 
         elif self.current_tok.value == "WTF?":
             switch = self.switch_case()
             if switch.error: return switch
+            if self.current_tok.type != TK_NEWLINE:
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
             statements.append(switch.node)
 
         elif self.current_tok.value == "GTFO":
             tok = self.current_tok
             res.register(self.advance())
+            if self.current_tok.type != TK_NEWLINE:
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
             statements.append(BreakNode(tok, tok.pos_start, tok.pos_end))
 
         elif self.current_tok.value == "O RLY?":
             if_stmt = self.if_statement()
             if if_stmt.error: return if_stmt
+            if self.current_tok.type != TK_NEWLINE:
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
             statements.append(if_stmt.node)
 
         elif self.current_tok.value == "YA RLY":
@@ -623,6 +644,8 @@ class Parser:
             # Parse expression statement
             expr = self.expression()
             if expr.error: return expr
+            if self.current_tok.type != TK_NEWLINE:
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
             statements.append(expr.node)
 
    
@@ -738,7 +761,7 @@ class Parser:
         if res.error: return res
    
         start = ArithmeticNode(start, left, delimiter, right)
-        
+
         return res.success(start)
     
     def comparison_expr(self):
@@ -873,7 +896,7 @@ class Parser:
             suppress_newline = True
             res.register(self.advance())
 
-        if self.current_tok.type != TK_NEWLINE and self.current_tok.type != TK_EOF and self.current_tok.value not in ("KTHXBYE", "GTFO") and self.current_tok.type != "Output Keyword":
+        if self.current_tok.type != TK_NEWLINE:
             return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
         
         if self.current_tok.type == TK_NEWLINE:
@@ -950,6 +973,9 @@ class Parser:
             
             return res.success(VarDeclNode(tok, identifier_tok, assignment_tok, value))
         
+        if self.current_tok.type != TK_NEWLINE:
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
+
         return res.success(VarDeclNode(tok, identifier_tok))
     
     def concat(self):
@@ -1092,6 +1118,9 @@ class Parser:
             return res.failure(InvalidSyntaxError(varident.pos_start, varident.pos_end, "Expected variable identifier "))
         res.register(self.advance())
 
+        if self.current_tok.type != TK_NEWLINE:
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
+
         return res.success(GimmehNode(tok, varident, varident.value))
         
 
@@ -1153,6 +1182,9 @@ class Parser:
         expression = self.comparison_expr()
         if expression.error: return expression
 
+        if self.current_tok.type != TK_NEWLINE:
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
+
         return res.success(LoopDeclarationNode(declaration, label, operation, varident, clause, expression.node))
 
     # for the loop delimiter
@@ -1171,6 +1203,9 @@ class Parser:
             return res.failure(InvalidSyntaxError(label.pos_start, label.pos_end, "Expected Loop Label " ))
         
         res.register(self.advance())
+
+        if self.current_tok.type != TK_NEWLINE:
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
 
         return res.success(LoopEndNode(declaration, label))
 
@@ -1212,7 +1247,8 @@ class Parser:
         
 
         end = self.loop_end()
-        
+        if end.error: return end
+
         if end.node.label.value != start.node.label.value:
             return res.failure(InvalidSyntaxError(end.node.pos_start, end.node.pos_end, "Expected Similar Start and End Label "))
 
@@ -1302,6 +1338,9 @@ class Parser:
 
             if expression.type not in [TK_BOOL, TK_FLOAT, TK_INT, TK_STRING]:
                 return res.failure(InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected 'NUMBR', 'NUMBAR', 'YARN', or 'TROOF'"))
+            print(self.current_tok.type)
+            res.register(self.advance())
+            print(self.current_tok.type)
 
             while self.current_tok.value != "OMG" or self.current_tok.value != "OMGWTF" or self.current_tok.value != "OIC":
                 res.register(self.advance())
@@ -1372,6 +1411,9 @@ class Parser:
                 
                 value_node = res.register(self.expression())
                 if res.error: return res
+
+                if self.current_tok.type != TK_NEWLINE:
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after OMG"))
 
                 if self.current_tok.type == TK_NEWLINE:
                    res.register(self.advance())
@@ -1521,6 +1563,9 @@ class Parser:
 
         end = self.current_tok
         res.register(self.advance())
+
+        if self.current_tok.type != TK_NEWLINE:
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
 
         return res.success(FunctionNode(start, statements, end))
     
