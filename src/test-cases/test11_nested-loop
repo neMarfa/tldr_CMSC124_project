@@ -1,0 +1,12 @@
+	WAZZUP
+		I HAS A num1 ITZ 0
+		I HAS A num2 ITZ 0
+	BUHBYE
+	
+	IM IN YR asc UPPIN YR num1 TIL BOTH SAEM 10 AN num1
+		num2 R 0
+		IM IN YR up UPPIN YR num2 TIL BOTH SAEM num2 AN 10
+			VISIBLE num2
+		IM OUTTA YR up
+		VISIBLE "***"
+	IM OUTTA YR asc
