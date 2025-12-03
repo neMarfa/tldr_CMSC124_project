@@ -98,7 +98,8 @@ KEYWORDS = {
     "MKAY": "Operation End",
     "WIN" : "Boolean Literal (True)",
     "FAIL" : "Boolean Literal (False)",
-    "!" : "EOS"
+    "!" : "EOS",
+    "+" : "Concatenation"
 }
 
 # for multi-word keywords

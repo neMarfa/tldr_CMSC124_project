@@ -869,7 +869,7 @@ class Parser:
         ))
 
     def print_statement(self):
-        # format: VISIBLE <expression> [AN <expression>]* [!]
+        # format: VISIBLE <expression> [AN|+ <expression>]* [!]
         res = ParserResult()
         tok = self.current_tok
         
@@ -883,25 +883,53 @@ class Parser:
         expr = res.register(self.expression())
         if res.error: return res
         expressions.append(expr)
-
-        # basically extends as long as there is a delimiter in the current statement or arithmetic op
-        while self.current_tok and (self.current_tok.type == TK_DELIMITER or self.current_tok.type == TK_CONCAT or self.current_tok.value in arithmetic):
+        
+        # after_first_expr = self.current_tok
+        
+        # parse additional expressions ONLY if separated by AN, +, or SMOOSH
+        while self.current_tok and (self.current_tok.type == TK_DELIMITER or self.current_tok.type == TK_CONCAT or self.current_tok.type == "Concatenation Keyword"):   
             res.register(self.advance())
             expr = res.register(self.expression())
             if res.error: return res
             expressions.append(expr)
         
+        expression_starters = [
+        "varident",           # variables
+        TK_STRING_DELIMITER,  # strings
+        TK_INT,               # numbers
+        TK_FLOAT,             # floats
+        TK_BOOL,              # WIN/FAIL
+        "Concatenation Keyword",  # SMOOSH
+        ]
+        
+        expression_starter_keywords = [
+            "MAEK",           # typecast
+            "SUM OF", "DIFF OF", "PRODUKT OF", "QUOSHUNT OF", "MOD OF",  # arithmetic
+            "BIGGR OF", "SMALLR OF",  # comparison operations
+            "BOTH SAEM", "DIFFRINT",  # comparison operators
+            "NOT", "BOTH OF", "EITHER OF", "WON OF", "ALL OF", "ANY OF",  # boolean
+        ]
+        
+        if self.current_tok:
+            if self.current_tok.type in expression_starters:
+                return res.failure(InvalidSyntaxError(
+                    self.current_tok.pos_start,
+                    self.current_tok.pos_end,
+                    "Multiple expressions in VISIBLE must be separated by '+' or 'AN'"
+                ))
+            
+            if self.current_tok.value in expression_starter_keywords:
+                return res.failure(InvalidSyntaxError(
+                    self.current_tok.pos_start,
+                    self.current_tok.pos_end,
+                    "Multiple expressions in VISIBLE must be separated by '+' or 'AN'"
+                ))
+            
         suppress_newline = False
         if self.current_tok and self.current_tok.type == TK_EOS:
             suppress_newline = True
             res.register(self.advance())
-
-        if self.current_tok.type != TK_NEWLINE:
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
         
-        if self.current_tok.type == TK_NEWLINE:
-            res.register(self.advance())
-
         return res.success(PrintNode(tok, expressions, suppress_newline))
 
     def var_decl_block(self):
