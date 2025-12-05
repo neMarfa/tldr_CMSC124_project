@@ -136,8 +136,13 @@ class IdentifierNode:
 class StringNode: 
     def __init__(self, tok):
         self.tok = tok
-        self.pos_start = self.tok.pos_start
-        self.pos_end = self.tok.pos_end
+        print(len(self.tok.value))
+        if hasattr(tok, "pos_start"):
+            self.pos_start = self.tok.pos_start
+            self.pos_end = self.tok.pos_end
+        else:
+            self.pos_start = None
+            self.pos_end = None
     
     def __repr__(self):
         return f'YARN:{self.tok}'
@@ -411,7 +416,8 @@ class Parser:
                 func = self.function()
                 if func.error: return func
                 statements.append(func.node)
-
+            if self.current_tok.type != TK_NEWLINE:
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
             while self.current_tok.type == TK_NEWLINE:
                 res.register(self.advance())
             
@@ -560,6 +566,8 @@ class Parser:
         elif self.current_tok.value == "HOW IZ I":
             func = self.function()
             if func.error: return func
+            if self.current_tok.type != TK_NEWLINE:
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
             statements.append(func.node)
         
         elif self.current_tok.value == "SMOOSH" and self.current_tok.type == "Concatenation Keyword":
@@ -887,7 +895,7 @@ class Parser:
         # after_first_expr = self.current_tok
         
         # parse additional expressions ONLY if separated by AN, +, or SMOOSH
-        while self.current_tok and (self.current_tok.type == TK_DELIMITER or self.current_tok.type == TK_CONCAT or self.current_tok.type == "Concatenation Keyword"):   
+        while self.current_tok and (self.current_tok.type == TK_CONCAT or self.current_tok.type == "Concatenation Keyword"):   
             res.register(self.advance())
             expr = res.register(self.expression())
             if res.error: return res
@@ -1608,8 +1616,7 @@ class Parser:
         end = self.current_tok
         res.register(self.advance())
 
-        if self.current_tok.type != TK_NEWLINE:
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end, "Expected newline after statement"))
+   
 
         return res.success(FunctionNode(start, statements, end))
     

@@ -9,7 +9,7 @@ IF U SAY SO
 
 HAI
 	WAZZUP
-		I HAS A choice
+		I HAS A choice ITZ 1
 		I HAS A input
 		I HAS A num1 ITZ 0
 	BUHBYE
@@ -28,12 +28,12 @@ HAI
 			OMG 2
 				VISIBLE "Enter bill cost: "
 				GIMMEH input
-				VISIBLE "Tip: " PRODUKT OF input AN 0.1
+				VISIBLE "Tip: " + PRODUKT OF input AN 0.1
 				GTFO
 			OMG 3
 				VISIBLE "Enter width: "
 				GIMMEH input
-				VISIBLE "Square Area: " PRODUKT OF input AN input
+				VISIBLE "Square Area: " + PRODUKT OF input AN input
 				GTFO
 			OMG 0
 				VISIBLE "Goodbye"

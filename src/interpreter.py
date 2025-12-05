@@ -316,28 +316,39 @@ class Interpreter:
         elif target_type == "YARN":
             if isinstance(value, BoolOps):
                 if value.value == True:
+                    self.IT = StringOps("WIN")
                     return StringOps("WIN")
+                elif value.value == "":
+                    self.IT = StringOps("FAIL")
+                    return StringOps("FAIL")
                 else:
+                    self.IT = StringOps("FAIL")
                     return StringOps("FAIL")
             else:
                 return StringOps(str(value.value))
         elif target_type == "TROOF":
             if isinstance(value, NumOps):
                 if value.value == 0:
+                    self.IT = StringOps("FAIL")
                     return BoolOps(False)
                 else:
+                    self.IT = StringOps("WIN")
                     return BoolOps(True)
             elif isinstance(value, StringOps):
-                if value.value == "":
+                if len(value.value) == 0:
+                    self.IT = StringOps("FAIL")
                     return BoolOps(False)
                 else:
+                    self.IT = StringOps("WIN")
                     return BoolOps(True)
             elif isinstance(value, BoolOps):
                 return value
             
             elif isinstance(value, NoobOps):
+                self.IT = StringOps("FAIL")
                 return BoolOps(False)
             else:
+                self.IT = StringOps("WIN")
                 return BoolOps(True)
         elif target_type == "NOOB":
             return NoobOps()

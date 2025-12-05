@@ -225,7 +225,7 @@ class Lexer:
     def make_identifier(self, tokens):
         id_str = ''
         pos_start = self.pos.copy()
-        
+        previous = ''
         # read the first word
         while self.current_char != None and self.current_char in LETTERS_DIGITS + '_':
             id_str += self.current_char
@@ -238,9 +238,12 @@ class Lexer:
 
             # skip spaces
             space_counter = 0
-            while self.current_char == ' ':
+            if self.current_char == ' ':
+                previous = self.current_char
                 space_counter += 1
                 self.advance()
+            elif self.current_char == ' ' and previous == ' ':
+                return None, ExpectedCharError(pos_start, self.pos.copy(), 'Incomplete Keyword Error unexpected space ')
 
             # if space_counter == 0, current str cannot be extended (not a multi-word)
             if space_counter == 0:

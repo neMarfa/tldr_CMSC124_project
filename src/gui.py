@@ -90,7 +90,7 @@ class LOLCodeGUI:
         self.text_editor.pack(fill=tk.BOTH, expand=True, padx=5, pady=(0, 5))
 
         # default code
-        default_code = """HAI\nI HAS A var ITZ 12\nVISIBLE var\nI HAS A noot ITZ "var"\nKTHXBYE"""
+        default_code = """HAI\nWAZZUP\nBUHBYE\n\nKTHXBYE"""
         self.text_editor.insert("1.0", default_code)
         #------------------------------------------------------------------------------------------------------------
         # right panel (for lexemes and the symbol table)
